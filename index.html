@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SERUM: State Extraction and Refinement for User Modeling | Minnesota NLP</title>
+  <meta name="description" content="SERUM extracts finite-state behavioral models from unstructured egocentric video using multi-pass VLM annotation. A Minnesota NLP Lab project at the University of Minnesota." />
+  <meta name="author" content="Andy J. Phu, James Mooney, Karin de Langis, Khanh Chi Le, Dongyeop Kang" />
+  <meta name="keywords" content="SERUM, user modeling, egocentric video, VLM, vision-language model, Markov, behavioral modeling, Minnesota NLP, CoLM 2026" />
+
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/favicon.png" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="SERUM: State Extraction and Refinement for User Modeling" />
+  <meta property="og:description" content="A multi-pass VLM framework for extracting finite-state behavioral models from unstructured egocentric video. Minnesota NLP Lab, University of Minnesota." />
+  <meta property="og:image" content="assets/favicon.png" />
+  <meta property="og:site_name" content="Minnesota NLP" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@MinnesotaNLP" />
+  <meta name="twitter:title" content="SERUM: State Extraction and Refinement for User Modeling" />
+  <meta name="twitter:description" content="Multi-pass VLM framework for extracting behavioral models from egocentric video. Minnesota NLP Lab." />
+  <meta name="twitter:image" content="assets/favicon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css" />
+
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    .hero-bg {
+      background:
+        radial-gradient(circle at 20% 10%, rgba(99,102,241,0.15), transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(14,165,233,0.15), transparent 55%),
+        radial-gradient(circle at 50% 80%, rgba(168,85,247,0.12), transparent 55%),
+        linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    .section-h {
+      position: relative;
+      padding-left: 14px;
+      border-left: 4px solid #4f46e5;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 9999px;
+      font-size: 12px; font-weight: 600;
+      background: #eef2ff; color: #4338ca;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 18px; border-radius: 10px;
+      font-weight: 600; font-size: 14px;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+    .btn-dark { background: #0f172a; color: white; }
+    .btn-light { background: white; color: #0f172a; border: 1px solid #e2e8f0; }
+    .btn-accent { background: #4f46e5; color: white; }
+    .card {
+      background: white; border: 1px solid #e2e8f0;
+      border-radius: 14px; padding: 22px;
+      transition: border-color .15s ease, transform .15s ease;
+    }
+    .card:hover { border-color: #c7d2fe; transform: translateY(-2px); }
+    .stage-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 9999px;
+      background: #4f46e5; color: white; font-weight: 700;
+      font-size: 14px;
+    }
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+    pre { overflow-x: auto; }
+  </style>
+</head>
+<body class="text-slate-800 bg-white">
+
+  <!-- HERO -->
+  <section class="hero-bg text-white">
+    <div class="max-w-6xl mx-auto px-6 pt-16 pb-20">
+      <div class="flex items-center gap-3 mb-8 text-xs uppercase tracking-[0.18em] text-indigo-200">
+        <span>CoLM 2026 · Under Review</span>
+      </div>
+
+      <h1 class="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight">
+        SERUM
+      </h1>
+      <h2 class="mt-3 text-lg md:text-2xl font-medium text-slate-200 max-w-3xl">
+        State Extraction and Refinement for User Modeling from Egocentric Video
+      </h2>
+
+      <div class="mt-10">
+        <div class="flex flex-wrap justify-start gap-6">
+          <a href="https://andyphu.com" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
+            <img src="assets/authors/andy.jpg" alt="Andy J. Phu" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
+            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">Andy J. Phu</span>
+          </a>
+          <a href="https://jimtmooney.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
+            <img src="assets/authors/james.jpeg" alt="James Mooney" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
+            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">James Mooney</span>
+          </a>
+          <a href="https://karinjd.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
+            <img src="assets/authors/karin.png" alt="Karin de Langis" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
+            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">Karin de Langis</span>
+          </a>
+          <a href="https://chile2706.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
+            <img src="assets/authors/chi.jpg" alt="Khanh Chi Le" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
+            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">Khanh Chi Le</span>
+          </a>
+          <a href="https://dykang.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
+            <img src="assets/authors/dongyeop.jpg" alt="Dongyeop Kang" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
+            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">Dongyeop Kang</span>
+          </a>
+        </div>
+        <div class="mt-5 text-xs md:text-sm text-slate-400">
+          <a href="https://minnesotanlp.github.io/" target="_blank" rel="noopener" class="hover:text-slate-200">Minnesota NLP Lab</a>,
+          <a href="https://twin-cities.umn.edu/" target="_blank" rel="noopener" class="hover:text-slate-200">University of Minnesota</a>
+        </div>
+      </div>
+
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="#" class="btn btn-light">
+          <i class="fa-solid fa-file-pdf"></i> Paper
+        </a>
+        <a href="https://github.com/minnesotanlp/serum" class="btn btn-light" target="_blank" rel="noopener">
+          <i class="fa-brands fa-github"></i> Code
+        </a>
+        <a href="https://amir-fluviomarine-nia.ngrok-free.dev/" class="btn btn-accent" target="_blank" rel="noopener">
+          <i class="fa-solid fa-play"></i> Live Demo
+        </a>
+        <a href="https://supersmartly-nonhypostatical-evita.ngrok-free.dev/" class="btn btn-dark" target="_blank" rel="noopener">
+          <i class="fa-solid fa-link"></i> Demo (Mirror)
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABSTRACT -->
+  <section class="max-w-4xl mx-auto px-6 py-16">
+    <h3 class="section-h text-2xl font-bold mb-5">Abstract</h3>
+    <p class="text-slate-700 leading-relaxed">
+      Agentic assistants capable of proactive, personalized interactions require structured models of user intent
+      and workflow. However, building these models from raw, unstructured screen activity remains an open challenge.
+      We present <strong>SERUM</strong>, a multi-pass framework that extracts finite-state behavioral models directly
+      from unstructured egocentric video using hierarchical VLM annotation. Processing screen recordings through a
+      sliding window, SERUM alternates between activity-recognition and intent-inference passes, with each pass
+      refining labels using accumulated prior context to reduce hallucination and temporal conflation seen in
+      single-pass annotation. Synonymous states are then merged via sentence embeddings and human-calibrated
+      thresholds into a compact, coherent taxonomy. We evaluate behavioral structure by fitting first-order Markov
+      models over the resulting label sequences and measuring predictive accuracy against frequency baselines.
+      Across 61 egocentric videos in four domains (coding, cooking, physical activities, and daily life), we find:
+      (1) iterative label refinement converges to a stable state vocabulary, which we term
+      <em>schematic equilibrium</em>, after several passes; (2) normalized Markov models achieve substantially
+      lower perplexity and higher action-prediction accuracy than frequency baselines, with the largest gains on
+      structured tasks like coding; and (3) human annotators rate final-pass labels as accurate and meaningfully
+      improved over first-pass labels. To our knowledge, SERUM is the first system to produce interpretable process
+      models from unstructured egocentric screen video without manual annotation.
+    </p>
+  </section>
+
+  <!-- METHOD -->
+  <section class="bg-slate-50 border-y border-slate-200">
+    <div class="max-w-5xl mx-auto px-6 py-16">
+      <h3 class="section-h text-2xl font-bold mb-8">Method: Multi-Pass State Refinement</h3>
+
+      <div class="grid md:grid-cols-2 gap-5">
+        <div class="card">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="stage-num">1</div>
+            <div class="font-semibold">Frame Sampling</div>
+          </div>
+          <p class="text-sm text-slate-600">Uniformly sample keyframes from egocentric video at a fixed cadence.</p>
+        </div>
+
+        <div class="card">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="stage-num">2</div>
+            <div class="font-semibold">Multi-Pass VLM Annotation</div>
+          </div>
+          <p class="text-sm text-slate-600">Twelve alternating passes (activity → intent → activity → …), each conditioned on prior-pass outputs.</p>
+        </div>
+
+        <div class="card">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="stage-num">3</div>
+            <div class="font-semibold">FSM Conversion</div>
+          </div>
+          <p class="text-sm text-slate-600">Deterministic post-processing converts pass outputs into a labeled state machine with transitions.</p>
+        </div>
+
+        <div class="card">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="stage-num">4</div>
+            <div class="font-semibold">Markov Evaluation</div>
+          </div>
+          <p class="text-sm text-slate-600">Split-half evaluation measures transition consistency and next-state prediction accuracy.</p>
+        </div>
+
+        <div class="card md:col-span-2">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="stage-num">5</div>
+            <div class="font-semibold">Analysis &amp; Visualization</div>
+          </div>
+          <p class="text-sm text-slate-600">
+            Convergence metrics, embedding geometry, and interactive graphs expose how state labels stabilize across passes.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HIGHLIGHTS -->
+  <section class="max-w-5xl mx-auto px-6 py-16">
+    <h3 class="section-h text-2xl font-bold mb-8">Highlights</h3>
+    <div class="grid md:grid-cols-3 gap-5">
+      <div class="card">
+        <span class="pill mb-3">Convergence</span>
+        <p class="text-sm text-slate-600 mt-3">Label vocabulary reaches <em>schematic equilibrium</em> after several passes, with extracted states stabilizing into a consistent taxonomy.</p>
+      </div>
+      <div class="card">
+        <span class="pill mb-3">Generalization</span>
+        <p class="text-sm text-slate-600 mt-3">61 egocentric videos across coding, cooking, physical activities, and daily-life domains.</p>
+      </div>
+      <div class="card">
+        <span class="pill mb-3">Interpretability</span>
+        <p class="text-sm text-slate-600 mt-3">Full provenance chain: every label is traceable back to a specific pass, prompt, and frame.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO -->
+  <section class="bg-slate-50 border-y border-slate-200">
+    <div class="max-w-5xl mx-auto px-6 py-16">
+      <h3 class="section-h text-2xl font-bold mb-5">Interactive Demo</h3>
+      <p class="text-slate-600 mb-6 max-w-3xl">
+        The live dashboard lets you explore extracted user models for 50+ videos, stepping through the video
+        alongside a synchronized FSM graph, browsing refinement chains across passes, and inspecting Markov
+        transition matrices.
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a href="https://amir-fluviomarine-nia.ngrok-free.dev/" class="btn btn-accent" target="_blank" rel="noopener">
+          <i class="fa-solid fa-play"></i> Launch Demo
+        </a>
+        <a href="https://supersmartly-nonhypostatical-evita.ngrok-free.dev/" class="btn btn-dark" target="_blank" rel="noopener">
+          <i class="fa-solid fa-link"></i> Mirror
+        </a>
+      </div>
+      <p class="mt-4 text-xs text-slate-500">
+        If the first link is offline, try the mirror. Some ISPs may block ngrok; visit the HTTP version once to
+        accept the certificate before the HTTPS link will load reliably.
+      </p>
+    </div>
+  </section>
+
+  <!-- BIBTEX -->
+  <section class="max-w-4xl mx-auto px-6 py-16">
+    <h3 class="section-h text-2xl font-bold mb-5">BibTeX</h3>
+    <pre class="bg-slate-900 text-slate-100 text-sm rounded-xl p-5"><code>@inproceedings{serum2026,
+  title     = {SERUM: State Extraction and Refinement for User Modeling},
+  author    = {Phu, Andy J. and Mooney, James and de Langis, Karin and Le, Khanh Chi and Kang, Dongyeop},
+  booktitle = {Conference on Language Modeling (CoLM)},
+  year      = {2026},
+  note      = {Under review}
+}</code></pre>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-200 py-10">
+    <div class="max-w-5xl mx-auto px-6 text-center text-sm text-slate-500">
+      SERUM · Minnesota NLP Lab · University of Minnesota
+    </div>
+  </footer>
+
+</body>
+</html>
