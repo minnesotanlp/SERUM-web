@@ -48,6 +48,9 @@
     pairSelector: $("live-pair-selector"),
     followToggle: $("live-follow-toggle"),
     followToggleLabel: $("live-follow-toggle-label"),
+    fsmSvg: $("live-fsm-svg"),
+    fsmEmpty: $("live-fsm-empty"),
+    fsmMeta: $("live-fsm-meta"),
     streamWrap: $("live-stream-wrap"),
     stream: $("live-stream"),
     newestBtn: $("live-newest"),
@@ -234,6 +237,11 @@
     els.timelineEnd.textContent = jobMeta.durationS ? fmtMMSS(jobMeta.durationS) : "...";
     els.framePosition.textContent = "";
     els.frameLabel.textContent = "";
+    if (els.fsmSvg) {
+      while (els.fsmSvg.firstChild) els.fsmSvg.removeChild(els.fsmSvg.firstChild);
+    }
+    if (els.fsmEmpty) els.fsmEmpty.style.display = "flex";
+    if (els.fsmMeta) els.fsmMeta.textContent = "";
 
     // Try to use the actual mp4. The api serves both library and youtube videos
     // at /jobs/<id>/video.mp4 (with a library fallback). If that 404s we hide
@@ -735,6 +743,153 @@
     );
   }
 
+  // ─── FSM / Markov graph (right-of-video) ─────────────────────────
+  // Built on the fly from per-frame state labels in the viewed pair. Nodes are
+  // unique labels, edges are observed (label_t → label_{t+1}) transitions whose
+  // weight scales with frequency. Layout: equally spaced on a circle. The
+  // currently-selected frame's label gets the active highlight.
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS(SVG_NS, tag);
+    if (attrs) for (const k in attrs) el.setAttribute(k, String(attrs[k]));
+    return el;
+  }
+
+  function buildGraphForPair(pair) {
+    const pairMap = allPairFrameStates.get(pair);
+    if (!pairMap || pairMap.size < 1) return null;
+    // Order frames by video time. Each frame contributes its newest label
+    // (intent overrides activity once intent has fired for that frame).
+    const frames = Array.from(pairMap.entries())
+      .map(([ts, st]) => ({ ts, sec: frameTsToSeconds(ts), label: st.label }))
+      .filter((f) => f.label)
+      .sort((a, b) => a.sec - b.sec);
+    if (!frames.length) return null;
+
+    const labelCounts = new Map();
+    const transitions = new Map(); // from → Map<to, count>
+    let prev = null;
+    for (const f of frames) {
+      labelCounts.set(f.label, (labelCounts.get(f.label) || 0) + 1);
+      if (prev != null && prev !== f.label) {
+        let outs = transitions.get(prev);
+        if (!outs) { outs = new Map(); transitions.set(prev, outs); }
+        outs.set(f.label, (outs.get(f.label) || 0) + 1);
+      }
+      prev = f.label;
+    }
+    // Stable label order so layout doesn't reshuffle on each tick.
+    const labels = Array.from(labelCounts.keys()).sort();
+    return { labels, labelCounts, transitions, frames };
+  }
+
+  function renderFSM(graph, currentLabel) {
+    const svg = els.fsmSvg;
+    if (!svg) return;
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    if (!graph || !graph.labels.length) {
+      els.fsmEmpty.style.display = "flex";
+      els.fsmMeta.textContent = "";
+      return;
+    }
+    els.fsmEmpty.style.display = "none";
+
+    const W = 400, H = 280;
+    const cx = W / 2, cy = H / 2;
+    const n = graph.labels.length;
+    const radius = Math.min(W, H) * (n > 1 ? 0.36 : 0);
+    const nodeR = n > 14 ? 12 : n > 8 ? 14 : 16;
+
+    // Place each label evenly on the circle (single-node graph sits centred).
+    const pos = new Map();
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+      pos.set(graph.labels[i], {
+        x: cx + radius * Math.cos(angle),
+        y: cy + radius * Math.sin(angle),
+      });
+    }
+
+    // <defs>: per-edge arrowheads (so we can colour the active edge).
+    const defs = svgEl("defs");
+    defs.innerHTML =
+      '<marker id="fsm-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker>' +
+      '<marker id="fsm-arrow-hot" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#4f46e5"/></marker>';
+    svg.appendChild(defs);
+
+    // Edges first so nodes render on top.
+    let maxOutCount = 1;
+    for (const outs of graph.transitions.values()) {
+      for (const c of outs.values()) maxOutCount = Math.max(maxOutCount, c);
+    }
+    for (const [from, outs] of graph.transitions) {
+      const fromPos = pos.get(from);
+      const totalOut = Array.from(outs.values()).reduce((a, b) => a + b, 0);
+      for (const [to, count] of outs) {
+        const toPos = pos.get(to);
+        if (!fromPos || !toPos) continue;
+        const dx = toPos.x - fromPos.x, dy = toPos.y - fromPos.y;
+        const len = Math.hypot(dx, dy) || 1;
+        // Trim endpoints so the arrowhead lands at the node border.
+        const sx = fromPos.x + (dx / len) * nodeR;
+        const sy = fromPos.y + (dy / len) * nodeR;
+        const ex = toPos.x - (dx / len) * (nodeR + 4);
+        const ey = toPos.y - (dy / len) * (nodeR + 4);
+        // Slight curve so opposing transitions don't overlap.
+        const mx = (sx + ex) / 2 - dy * 0.12;
+        const my = (sy + ey) / 2 + dx * 0.12;
+        const prob = count / totalOut;
+        const isHot = from === currentLabel;
+        svg.appendChild(svgEl("path", {
+          d: `M ${sx} ${sy} Q ${mx} ${my} ${ex} ${ey}`,
+          stroke: isHot ? "#4f46e5" : "#94a3b8",
+          "stroke-width": (1 + prob * 4).toFixed(2),
+          fill: "none",
+          opacity: isHot ? 0.85 : 0.45,
+          "marker-end": isHot ? "url(#fsm-arrow-hot)" : "url(#fsm-arrow)",
+        }));
+      }
+    }
+
+    // Nodes.
+    for (const label of graph.labels) {
+      const p = pos.get(label);
+      const isActive = label === currentLabel;
+      svg.appendChild(svgEl("circle", {
+        cx: p.x, cy: p.y, r: nodeR,
+        fill: isActive ? "#4f46e5" : "#ffffff",
+        stroke: isActive ? "#3730a3" : "#cbd5e1",
+        "stroke-width": isActive ? 2.5 : 1.5,
+      }));
+      const display = label.length > 16 ? label.slice(0, 14) + "…" : label;
+      const t = svgEl("text", {
+        x: p.x, y: p.y + nodeR + 11,
+        "text-anchor": "middle",
+        "font-size": 10,
+        "font-weight": isActive ? 600 : 400,
+        fill: isActive ? "#3730a3" : "#475569",
+      });
+      t.textContent = display;
+      svg.appendChild(t);
+    }
+
+    els.fsmMeta.textContent =
+      `${graph.labels.length} states · ${countTransitions(graph.transitions)} edges`;
+  }
+
+  function countTransitions(t) {
+    let n = 0;
+    for (const m of t.values()) n += m.size;
+    return n;
+  }
+
+  function updateFSMForViewedPair() {
+    const graph = buildGraphForPair(viewedPair);
+    const currentLabel = (selectedTs && pairFrameStates.get(selectedTs)) ?
+      pairFrameStates.get(selectedTs).label : null;
+    renderFSM(graph, currentLabel);
+  }
+
   // Pick the frame the "follow latest" cursor should pin to: the leading edge
   // of whichever pass is currently committing in this pair. Within a pair,
   // pass 2 (intent) always runs strictly after pass 1 (activity) - so once
@@ -791,6 +946,10 @@
       const url = `${apiBase}/jobs/${jobMeta.jobId}/frames/${selectedTs}.jpg`;
       if (fallbackImg.src !== url) fallbackImg.src = url;
     }
+
+    // Refresh the FSM (current label may have changed; new transitions may have
+    // arrived in the same SSE tick).
+    updateFSMForViewedPair();
   }
 
   function stepFrame(delta) {

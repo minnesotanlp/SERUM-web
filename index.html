@@ -248,7 +248,16 @@
               </button>
             </div>
           </div>
-          <div id="live-player" class="aspect-video bg-slate-100 rounded-md overflow-hidden mb-2 flex items-center justify-center text-slate-400 text-sm relative"></div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+            <div id="live-player" class="aspect-video bg-slate-100 rounded-md overflow-hidden flex items-center justify-center text-slate-400 text-sm relative"></div>
+            <div id="live-fsm-wrap" class="aspect-video bg-slate-50 rounded-md overflow-hidden border border-slate-200 relative">
+              <svg id="live-fsm-svg" viewBox="0 0 400 280" class="w-full h-full" preserveAspectRatio="xMidYMid meet"></svg>
+              <div id="live-fsm-empty" class="absolute inset-0 flex items-center justify-center text-xs text-slate-400 px-3 text-center">
+                FSM graph builds as labels arrive. Highlighted node = current frame's label.
+              </div>
+              <div id="live-fsm-meta" class="absolute bottom-1 right-2 text-[10px] text-slate-400 font-mono"></div>
+            </div>
+          </div>
           <div class="relative h-10 bg-slate-100 rounded-md mb-1 overflow-visible cursor-pointer" id="live-timeline-track">
             <div id="live-timeline-bars" class="absolute inset-x-0 top-2 bottom-2"></div>
           </div>
