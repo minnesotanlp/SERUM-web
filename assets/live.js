@@ -26,6 +26,11 @@
     stateDetail: $("live-state-detail"),
     progress: $("live-progress-bar"),
     meta: $("live-meta"),
+    playerWrap: $("live-player-wrap"),
+    player: $("live-player"),
+    timelineBars: $("live-timeline-bars"),
+    timelineEnd: $("live-timeline-end"),
+    pairLabel: $("live-pair-label"),
     streamWrap: $("live-stream-wrap"),
     stream: $("live-stream"),
     newestBtn: $("live-newest"),
@@ -36,6 +41,15 @@
   let userScrolledAway = false;
   let pendingNewItems = 0;
   let renderedFrames = new Set();
+
+  // Library cache so we can look up duration_min etc. when submitting.
+  const libraryById = new Map();
+
+  // Per-job timeline state — rebuilt on every new submission.
+  let jobMeta = null;       // { jobId, source, durationS, videoId|url, ytId }
+  let currentPair = 0;      // pair index 1..6 (passes 1+2=1, 3+4=2, ...)
+  let pairFrameStates = new Map(); // ts → { activity: bool, intent: bool }
+  let barElByTs = new Map();       // ts → DOM bar element
 
   // Scroll detection — visitor-controlled scroll per design lock E1
   els.stream.addEventListener("scroll", () => {
@@ -67,6 +81,7 @@
         return;
       }
       for (const v of data.videos || []) {
+        libraryById.set(v.id, v);
         const opt = document.createElement("option");
         opt.value = v.id;
         opt.textContent = `${v.title} (${v.category}, ~${v.duration_min} min)`;
@@ -90,15 +105,22 @@
     const libVid = els.library.value.trim();
     const ytUrl = els.ytUrl.value.trim();
 
-    let body;
+    let body, sourceMeta;
     if (libVid) {
+      const lib = libraryById.get(libVid);
       body = { source: "library", video_id: libVid };
+      sourceMeta = {
+        source: "library",
+        videoId: libVid,
+        durationS: lib ? Math.round((lib.duration_min || 0) * 60) : 0,
+      };
     } else if (ytUrl) {
       if (!/^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(ytUrl)) {
         showError("That doesn't look like a YouTube URL.");
         return;
       }
       body = { source: "youtube", url: ytUrl };
+      sourceMeta = { source: "youtube", url: ytUrl, ytId: extractYouTubeId(ytUrl), durationS: 0 };
     } else {
       showError("Pick a library video or paste a YouTube URL.");
       return;
@@ -126,7 +148,11 @@
         return;
       }
       const data = await resp.json();
+      // Pull duration from the response if the api returns it (overrides our guess for YT).
+      if (data.duration_s) sourceMeta.durationS = data.duration_s;
+      jobMeta = { jobId: data.job_id, ...sourceMeta };
       startStreaming(data.job_id);
+      renderPlayer();
     } catch (e) {
       showError(`Submission failed: ${e.message}`);
     } finally {
@@ -138,6 +164,60 @@
   function showError(msg) {
     els.error.textContent = msg;
     els.error.classList.remove("hidden");
+  }
+
+  function extractYouTubeId(url) {
+    const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  // Convert a frame_ts ("YYYYMMDD_HHMMSS" or "HHMMSS") to seconds-into-video.
+  function frameTsToSeconds(ts) {
+    const t = String(ts).split("_").pop();
+    if (t.length < 6) return 0;
+    const h = parseInt(t.slice(-6, -4), 10) || 0;
+    const m = parseInt(t.slice(-4, -2), 10) || 0;
+    const s = parseInt(t.slice(-2), 10) || 0;
+    return h * 3600 + m * 60 + s;
+  }
+
+  function fmtMMSS(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  function renderPlayer() {
+    if (!jobMeta) return;
+    els.playerWrap.classList.remove("hidden");
+    els.player.innerHTML = "";
+    barElByTs.clear();
+    pairFrameStates.clear();
+    currentPair = 0;
+    els.timelineBars.innerHTML = "";
+    els.pairLabel.textContent = "";
+    els.timelineEnd.textContent = jobMeta.durationS ? fmtMMSS(jobMeta.durationS) : "—";
+
+    if (jobMeta.source === "youtube" && jobMeta.ytId) {
+      const iframe = document.createElement("iframe");
+      iframe.src = `https://www.youtube.com/embed/${jobMeta.ytId}`;
+      iframe.className = "w-full h-full";
+      iframe.setAttribute("allow", "accelerometer; encrypted-media; picture-in-picture");
+      iframe.setAttribute("allowfullscreen", "");
+      els.player.appendChild(iframe);
+    } else {
+      // Library or YouTube without resolvable id: show the most recent processed frame.
+      const img = document.createElement("img");
+      img.id = "live-player-frame";
+      img.alt = "current frame";
+      img.className = "w-full h-full object-contain";
+      img.style.display = "none";
+      const placeholder = document.createElement("div");
+      placeholder.className = "text-xs text-slate-400";
+      placeholder.textContent = "Frames will appear here as they're processed.";
+      els.player.appendChild(placeholder);
+      els.player.appendChild(img);
+    }
   }
 
   function startStreaming(jobId) {
@@ -183,18 +263,27 @@
       return;
     }
 
+    // If the api/worker reports duration_s, use it (covers YouTube post-validation).
+    if (jobMeta && status.duration_s && !jobMeta.durationS) {
+      jobMeta.durationS = status.duration_s;
+      els.timelineEnd.textContent = fmtMMSS(jobMeta.durationS);
+    }
+
     setStatusBadge(state, statusDetail(status));
     setProgress(status);
     setMeta(status);
 
     if (Array.isArray(status.recent_states)) {
       mergeRecentStates(jobId, status.recent_states);
+      updateTimelineFromStates(status.recent_states);
     }
 
-    if (state === "complete" || state === "failed") {
+    if (state === "complete" || state === "failed" || state === "cancelled") {
       if (evtSource) evtSource.close();
       if (state === "failed") {
         setStatusBadge("failed", status.error || "Job failed");
+      } else if (state === "cancelled") {
+        setStatusBadge("cancelled", status.error || "Cancelled");
       }
     }
   }
@@ -208,6 +297,7 @@
       running: "bg-indigo-100 text-indigo-800",
       complete: "bg-emerald-100 text-emerald-800",
       failed: "bg-rose-100 text-rose-800",
+      cancelled: "bg-slate-200 text-slate-700",
       disconnected: "bg-slate-200 text-slate-700",
     };
     els.stateBadge.className = `pill ${colors[state] || colors.disconnected}`;
@@ -267,6 +357,90 @@
       els.newestCount.textContent = pendingNewItems;
       els.newestBtn.classList.remove("hidden");
     }
+  }
+
+  // Compute pair from pass: passes 1+2 → pair 1, 3+4 → pair 2, ..., 11+12 → pair 6.
+  function pairOf(pass) { return Math.ceil(pass / 2); }
+  // True for activity passes (odd), false for intent passes (even).
+  function isActivityPass(pass) { return pass % 2 === 1; }
+
+  // Walk all states and rebuild the bar overlay for the *current* pair only.
+  // Earlier pairs are intentionally cleared so the timeline always reflects
+  // "what we know about the in-flight pair right now".
+  function updateTimelineFromStates(states) {
+    if (!jobMeta || !jobMeta.durationS) return;
+    if (!states.length) return;
+
+    // Newest pair = max pair across all incoming states.
+    let maxPair = 0;
+    for (const s of states) maxPair = Math.max(maxPair, pairOf(s.pass || 0));
+    if (maxPair < 1) return;
+
+    if (maxPair !== currentPair) {
+      // New pair started → clear the track and the per-frame map.
+      currentPair = maxPair;
+      pairFrameStates.clear();
+      barElByTs.clear();
+      els.timelineBars.innerHTML = "";
+    }
+    els.pairLabel.textContent = `Current pair: passes ${currentPair * 2 - 1} & ${currentPair * 2}`;
+
+    // Only consider states from the current pair.
+    for (const s of states) {
+      if (pairOf(s.pass || 0) !== currentPair) continue;
+      const ts = s.frame_ts;
+      if (!ts) continue;
+      let st = pairFrameStates.get(ts);
+      if (!st) {
+        st = { activity: false, intent: false };
+        pairFrameStates.set(ts, st);
+      }
+      if (isActivityPass(s.pass)) st.activity = true;
+      else st.intent = true;
+      ensureBarFor(ts);
+      paintBar(ts, st);
+    }
+
+    // Update the floating "current frame" image (library mode).
+    const frameImg = document.getElementById("live-player-frame");
+    if (frameImg) {
+      // Pick the latest frame_ts in the current pair (max seconds).
+      let bestTs = null, bestSec = -1;
+      for (const ts of pairFrameStates.keys()) {
+        const sec = frameTsToSeconds(ts);
+        if (sec > bestSec) { bestSec = sec; bestTs = ts; }
+      }
+      if (bestTs) {
+        const url = `${apiBase}/jobs/${jobMeta.jobId}/frames/${bestTs}.jpg`;
+        if (frameImg.src !== url) {
+          frameImg.src = url;
+          frameImg.onload = () => { frameImg.style.display = "block"; };
+        }
+      }
+    }
+  }
+
+  function ensureBarFor(ts) {
+    if (barElByTs.has(ts)) return;
+    if (!jobMeta || !jobMeta.durationS) return;
+    const sec = frameTsToSeconds(ts);
+    const pct = Math.max(0, Math.min(100, (sec / jobMeta.durationS) * 100));
+    const bar = document.createElement("div");
+    bar.className = "absolute top-0 bottom-0 transition-colors";
+    bar.style.left = `${pct}%`;
+    bar.style.width = "3px";
+    bar.style.backgroundColor = "transparent";
+    bar.title = `${ts} (${fmtMMSS(sec)})`;
+    els.timelineBars.appendChild(bar);
+    barElByTs.set(ts, bar);
+  }
+
+  function paintBar(ts, st) {
+    const bar = barElByTs.get(ts);
+    if (!bar) return;
+    if (st.intent) bar.style.backgroundColor = "#10b981";       // emerald-500 — green
+    else if (st.activity) bar.style.backgroundColor = "#f59e0b"; // amber-500 — yellow
+    else bar.style.backgroundColor = "transparent";
   }
 
   function renderStateRow(jobId, s) {

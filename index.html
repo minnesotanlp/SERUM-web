@@ -84,10 +84,6 @@
   <!-- HERO -->
   <section class="hero-bg text-white">
     <div class="max-w-6xl mx-auto px-6 pt-16 pb-20">
-      <div class="flex items-center gap-3 mb-8 text-xs uppercase tracking-[0.18em] text-indigo-200">
-        <span>CoLM 2026 · Under Review</span>
-      </div>
-
       <h1 class="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight">
         SERUM
       </h1>
@@ -237,10 +233,12 @@
   <!-- LIVE INFERENCE -->
   <section id="live" class="border-y border-slate-200 bg-gradient-to-b from-white to-slate-50">
     <div class="max-w-5xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-3">Try SERUM live</h3>
+      <h3 class="section-h text-2xl font-bold mb-3">SERUM live — generalized runner</h3>
       <p class="text-slate-600 mb-8 max-w-3xl">
-        Run real SERUM inference in your browser. Pick a curated demo or paste a YouTube URL —
-        we'll extract frames and stream pass-by-pass label results as the model produces them.
+        A live runner meant to help you understand the paper by watching SERUM work on a video of your choice.
+        Pick a curated demo or paste a YouTube URL, and stream pass-by-pass labels as the model produces them.
+        To keep latency reasonable, the post-hoc analysis stages (normalization, Markov modeling, chart generation)
+        are skipped here — those live in the dashboard below.
       </p>
 
       <div class="grid md:grid-cols-2 gap-6">
@@ -287,10 +285,31 @@
         </div>
       </div>
 
+      <div id="live-player-wrap" class="hidden mt-6">
+        <div class="card">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-semibold">3. Video &amp; timeline</h4>
+            <span id="live-pair-label" class="text-xs text-slate-500"></span>
+          </div>
+          <div id="live-player" class="aspect-video bg-slate-100 rounded-md overflow-hidden mb-2 flex items-center justify-center text-slate-400 text-sm"></div>
+          <div class="relative h-6 bg-slate-100 rounded-md mb-1 overflow-hidden">
+            <div id="live-timeline-bars" class="absolute inset-0"></div>
+          </div>
+          <div class="flex justify-between text-xs text-slate-400">
+            <span>0:00</span>
+            <span id="live-timeline-end">—</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-2">
+            Yellow bar = activity pass committed for that frame. Green bar = intent pass also committed (frame fully labeled in the current pair).
+            Both clear when the next pair of passes begins.
+          </p>
+        </div>
+      </div>
+
       <div id="live-stream-wrap" class="hidden mt-6">
         <div class="card">
           <div class="flex items-center justify-between mb-3">
-            <h4 class="font-semibold">3. State stream</h4>
+            <h4 class="font-semibold">4. State stream</h4>
             <button id="live-newest"
                     class="hidden text-xs px-3 py-1 rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
               <span id="live-newest-count">0</span> new updates ↑
@@ -307,11 +326,11 @@
   <!-- DEMO -->
   <section class="bg-slate-50 border-y border-slate-200">
     <div class="max-w-5xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-5">Interactive Dashboard</h3>
+      <h3 class="section-h text-2xl font-bold mb-5">SERUM dashboard — full pipeline output, 500+ videos</h3>
       <p class="text-slate-600 mb-6 max-w-3xl">
-        The live dashboard lets you explore extracted user models for 50+ videos, stepping through the video
-        alongside a synchronized FSM graph, browsing refinement chains across passes, and inspecting Markov
-        transition matrices.
+        The dashboard lets you explore the complete pipeline output (including the post-hoc analyses skipped by the live runner above)
+        across 500+ videos: per-pass refinement chains, FSM graphs synchronized to the video, normalized Markov transition matrices,
+        and confidence / perplexity diagnostics.
       </p>
       <div class="flex flex-wrap gap-3">
         <a href="https://amir-fluviomarine-nia.ngrok-free.dev/" class="btn btn-accent" target="_blank" rel="noopener">
