@@ -160,64 +160,13 @@
     </p>
   </section>
 
-  <!-- METHOD -->
-  <section class="bg-slate-50 border-y border-slate-200">
-    <div class="max-w-5xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-8">Method: Multi-Pass State Refinement</h3>
-
-      <div class="grid md:grid-cols-2 gap-5">
-        <div class="card">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="stage-num">1</div>
-            <div class="font-semibold">Frame Sampling</div>
-          </div>
-          <p class="text-sm text-slate-600">Uniformly sample keyframes from egocentric video at a fixed cadence.</p>
-        </div>
-
-        <div class="card">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="stage-num">2</div>
-            <div class="font-semibold">Multi-Pass VLM Annotation</div>
-          </div>
-          <p class="text-sm text-slate-600">Twelve alternating passes (activity → intent → activity → …), each conditioned on prior-pass outputs.</p>
-        </div>
-
-        <div class="card">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="stage-num">3</div>
-            <div class="font-semibold">FSM Conversion</div>
-          </div>
-          <p class="text-sm text-slate-600">Deterministic post-processing converts pass outputs into a labeled state machine with transitions.</p>
-        </div>
-
-        <div class="card">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="stage-num">4</div>
-            <div class="font-semibold">Markov Evaluation</div>
-          </div>
-          <p class="text-sm text-slate-600">Split-half evaluation measures transition consistency and next-state prediction accuracy.</p>
-        </div>
-
-        <div class="card md:col-span-2">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="stage-num">5</div>
-            <div class="font-semibold">Analysis &amp; Visualization</div>
-          </div>
-          <p class="text-sm text-slate-600">
-            Convergence metrics, embedding geometry, and interactive graphs expose how state labels stabilize across passes.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- LIVE INFERENCE -->
   <section id="live" class="border-y border-slate-200 bg-gradient-to-b from-white to-slate-50">
     <div class="max-w-5xl mx-auto px-6 py-16">
       <h3 class="section-h text-2xl font-bold mb-3">SERUM live: generalized runner</h3>
       <p class="text-slate-600 mb-8 max-w-3xl">
         A live runner meant to help you understand the paper by watching SERUM work on a video of your choice.
-        Pick a curated demo or paste a YouTube URL, and stream pass-by-pass labels as the model produces them.
+        Pick a pre-loaded video or paste a YouTube URL, and stream pass-by-pass labels as the model produces them.
         To keep latency reasonable, the post-hoc analysis stages (normalization, Markov modeling, chart generation)
         are skipped here. Those live in the dashboard below.
       </p>
