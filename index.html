@@ -211,34 +211,15 @@
     </div>
   </section>
 
-  <!-- HIGHLIGHTS -->
-  <section class="max-w-5xl mx-auto px-6 py-16">
-    <h3 class="section-h text-2xl font-bold mb-8">Highlights</h3>
-    <div class="grid md:grid-cols-3 gap-5">
-      <div class="card">
-        <span class="pill mb-3">Convergence</span>
-        <p class="text-sm text-slate-600 mt-3">Label vocabulary reaches <em>schematic equilibrium</em> after several passes, with extracted states stabilizing into a consistent taxonomy.</p>
-      </div>
-      <div class="card">
-        <span class="pill mb-3">Generalization</span>
-        <p class="text-sm text-slate-600 mt-3">61 egocentric videos across coding, cooking, physical activities, and daily-life domains.</p>
-      </div>
-      <div class="card">
-        <span class="pill mb-3">Predictive Power</span>
-        <p class="text-sm text-slate-600 mt-3">Normalized first-order Markov models substantially outperform frequency baselines in perplexity and next-action accuracy, with the largest gains on structured tasks like coding.</p>
-      </div>
-    </div>
-  </section>
-
   <!-- LIVE INFERENCE -->
   <section id="live" class="border-y border-slate-200 bg-gradient-to-b from-white to-slate-50">
     <div class="max-w-5xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-3">SERUM live — generalized runner</h3>
+      <h3 class="section-h text-2xl font-bold mb-3">SERUM live: generalized runner</h3>
       <p class="text-slate-600 mb-8 max-w-3xl">
         A live runner meant to help you understand the paper by watching SERUM work on a video of your choice.
         Pick a curated demo or paste a YouTube URL, and stream pass-by-pass labels as the model produces them.
         To keep latency reasonable, the post-hoc analysis stages (normalization, Markov modeling, chart generation)
-        are skipped here — those live in the dashboard below.
+        are skipped here. Those live in the dashboard below.
       </p>
 
       <div class="grid md:grid-cols-2 gap-6">
@@ -246,7 +227,7 @@
           <h4 class="font-semibold mb-3">1. Choose a video</h4>
           <label class="block text-xs font-medium text-slate-500 mb-1">Preloaded library</label>
           <select id="live-library" class="w-full text-sm rounded-md border border-slate-300 px-3 py-2 mb-4 bg-white">
-            <option value="">— select a demo —</option>
+            <option value="">select a demo</option>
           </select>
 
           <label class="block text-xs font-medium text-slate-500 mb-1">…or paste a YouTube URL</label>
@@ -289,7 +270,7 @@
             <ol id="live-stage-steps" class="text-xs text-slate-500 mb-3 space-y-1"></ol>
             <div id="live-queue-card" class="hidden mb-3 rounded-md border border-amber-200 bg-amber-50 p-3">
               <div class="flex items-baseline gap-2">
-                <span class="text-2xl font-bold text-amber-900" id="live-queue-pos">#—</span>
+                <span class="text-2xl font-bold text-amber-900" id="live-queue-pos">#?</span>
                 <span class="text-sm text-amber-800">in line</span>
               </div>
               <div class="text-xs text-amber-800 mt-1" id="live-queue-detail"></div>
@@ -324,7 +305,7 @@
           </div>
           <div class="flex justify-between text-xs text-slate-400">
             <span>0:00</span>
-            <span id="live-timeline-end">—</span>
+            <span id="live-timeline-end">...</span>
           </div>
           <div class="flex items-center justify-between mt-2 text-xs">
             <div class="flex items-center gap-2">
@@ -361,7 +342,7 @@
   <!-- DEMO -->
   <section class="bg-slate-50 border-y border-slate-200">
     <div class="max-w-5xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-5">SERUM dashboard — full pipeline output, 400+ videos</h3>
+      <h3 class="section-h text-2xl font-bold mb-5">SERUM dashboard: full pipeline output, 400+ videos</h3>
       <p class="text-slate-600 mb-6 max-w-3xl">
         The dashboard lets you explore the complete pipeline output (including the post-hoc analyses skipped by the live runner above)
         across 400+ videos: per-pass refinement chains, FSM graphs synchronized to the video, normalized Markov transition matrices,

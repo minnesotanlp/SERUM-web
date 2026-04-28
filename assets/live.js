@@ -1,4 +1,4 @@
-// SERUM-live frontend — vanilla JS, no build step.
+// SERUM-live frontend - vanilla JS, no build step.
 // Talks to the SERUM-job-api via the public ngrok tunnel.
 
 (function () {
@@ -62,7 +62,7 @@
   // Library cache so we can look up duration_min etc. when submitting.
   const libraryById = new Map();
 
-  // Per-job timeline state — rebuilt on every new submission.
+  // Per-job timeline state - rebuilt on every new submission.
   let jobMeta = null;       // { jobId, source, durationS, videoId|url, ytId }
   // We keep state for ALL pairs (1..6); the user can switch which one they're
   // viewing. `viewedPair` is the active view; `latestPair` tracks where the
@@ -77,7 +77,7 @@
   let fallbackImg = null;   // <img> shown when no mp4 (e.g. EPIC-KITCHENS)
   let selectedTs = null;    // user-clicked frame timestamp (slideshow focus)
 
-  // Scroll detection — visitor-controlled scroll per design lock E1
+  // Scroll detection - visitor-controlled scroll per design lock E1
   els.stream.addEventListener("scroll", () => {
     const atTop = els.stream.scrollTop < 8;
     if (atTop) {
@@ -121,7 +121,7 @@
 
   function showSchemaMismatch() {
     els.error.textContent =
-      "Live demo is being updated — refresh in a moment.";
+      "Live demo is being updated. Refresh in a moment.";
     els.error.classList.remove("hidden");
     els.submit.disabled = true;
   }
@@ -231,7 +231,7 @@
     fallbackImg = null;
     els.timelineBars.innerHTML = "";
     els.pairLabel.textContent = "";
-    els.timelineEnd.textContent = jobMeta.durationS ? fmtMMSS(jobMeta.durationS) : "—";
+    els.timelineEnd.textContent = jobMeta.durationS ? fmtMMSS(jobMeta.durationS) : "...";
     els.framePosition.textContent = "";
     els.frameLabel.textContent = "";
 
@@ -366,7 +366,7 @@
     return "";
   }
 
-  // Shown immediately on POST /jobs success — independent of SSE reconnects.
+  // Shown immediately on POST /jobs success - independent of SSE reconnects.
   function showReceipt(postResp) {
     if (!postResp || !postResp.job_id) return;
     els.receipt.classList.remove("hidden");
@@ -391,11 +391,11 @@
     queued: "You're in the FIFO queue. The pipeline runs one job at a time so we can give the GPU full bandwidth for your video. As soon as the slot opens, your job starts.",
     starting: "Worker accepted your job. Setting up the per-job manifest tree, verifying the inference server is healthy, and preparing to extract frames.",
     extracting: "Decoding the video and pulling one frame every 5 seconds. About 30 seconds per minute of source for YouTube; instant for library demos (frames are pre-staged).",
-    extracted: "Frames are ready. Spawning the GUM inference container and warming up the vLLM model — first pass kicks off in ~20 seconds.",
+    extracted: "Frames are ready. Spawning the GUM inference container and warming up the vLLM model. First pass kicks off in about 20 seconds.",
     running: "Running the 12-pass alternating activity ↔ intent labelling loop. Each pass labels every frame; activity passes refine what's happening, intent passes infer why.",
     complete: "All 12 passes committed. The state stream below shows what the model saw at each frame; the timeline above lets you scrub through.",
-    failed: "Pipeline error — see the details above. You can resubmit the same video; resubmissions automatically cancel your previous run.",
-    cancelled: "Run was superseded — either by you submitting a newer job or by a worker restart.",
+    failed: "Pipeline error. See the details above. You can resubmit the same video; resubmissions automatically cancel your previous run.",
+    cancelled: "Run was superseded, either by you submitting a newer job or by a worker restart.",
   };
 
   function setStageHelp(status) {
@@ -453,7 +453,7 @@
 
     let detail;
     if (ahead === 0) {
-      detail = "You're up next — starting shortly.";
+      detail = "You're up next, starting shortly.";
     } else {
       const m = Math.max(1, Math.round(waitS / 60));
       detail = `${ahead} ${ahead === 1 ? "job" : "jobs"} ahead of you · ~${m} min estimated wait`;
@@ -552,7 +552,7 @@
     } else if (viewedPair === 0) {
       switchToPair(latestPair, /*autoAdvanceSelection*/ true);
     } else {
-      // Same viewed pair, but new frames may have arrived — repaint.
+      // Same viewed pair, but new frames may have arrived - repaint.
       renderBarsForViewedPair(/*advanceSelection*/ followLatest);
     }
     renderPairSelector();
@@ -567,7 +567,7 @@
     barElByTs.clear();
     els.timelineBars.innerHTML = "";
     els.pairLabel.textContent =
-      `Pair ${pair} — passes ${pair * 2 - 1} & ${pair * 2}`;
+      `Pair ${pair}: passes ${pair * 2 - 1} & ${pair * 2}`;
     // Reset selection to "newest in this pair" so the user lands on something
     // sensible. selectFrame() / framePrev/Next will let them browse from there.
     if (autoAdvanceSelection) selectedTs = null;
@@ -575,14 +575,17 @@
   }
 
   function renderBarsForViewedPair(advanceSelection) {
+    // Advance the cursor BEFORE painting so the raised-bar styling reflects the
+    // newest frame in the same tick, not last tick's frame. (paintBar reads
+    // selectedTs at call time, so updating it after the loop leaves the prior
+    // selection visually raised until the next SSE tick.)
+    if (advanceSelection) {
+      const target = followTargetForPair(viewedPair);
+      if (target) selectedTs = target;
+    }
     for (const [ts, st] of pairFrameStates) {
       ensureBarFor(ts);
       paintBar(ts, st);
-    }
-    if (advanceSelection) {
-      // Auto-pin to the newest frame in the viewed pair (so live runs feel live).
-      const order = sortedFrameTs();
-      if (order.length) selectedTs = order[order.length - 1];
     }
   }
 
@@ -618,12 +621,12 @@
     followLatest = !!on;
     setFollowToggleLabel();
     if (followLatest) {
-      // Snap to latest pair + latest frame immediately.
+      // Snap to latest pair + frontier frame of the active pass.
       if (latestPair && viewedPair !== latestPair) {
         switchToPair(latestPair, /*autoAdvanceSelection*/ true);
       } else {
-        const order = sortedFrameTs();
-        if (order.length) selectFrameQuiet(order[order.length - 1]);
+        const target = followTargetForPair(viewedPair);
+        if (target) selectFrameQuiet(target);
       }
       renderPairSelector();
       renderSelected();
@@ -639,7 +642,7 @@
     } else {
       els.followToggle.classList.remove("bg-indigo-50", "text-indigo-700", "border-indigo-200");
       els.followToggle.classList.add("bg-slate-50", "text-slate-600", "border-slate-200");
-      els.followToggleLabel.textContent = "Paused — click to follow";
+      els.followToggleLabel.textContent = "Paused, click to follow";
     }
   }
 
@@ -697,9 +700,9 @@
     const bar = barElByTs.get(ts);
     if (!bar) return;
     const isSelected = ts === selectedTs;
-    if (st.intent) bar.style.backgroundColor = "#10b981";       // emerald-500 — green
-    else if (st.activity) bar.style.backgroundColor = "#f59e0b"; // amber-500 — yellow
-    else bar.style.backgroundColor = "#cbd5e1";                  // slate-300 — pending placeholder
+    if (st.intent) bar.style.backgroundColor = "#10b981";       // emerald-500 - green
+    else if (st.activity) bar.style.backgroundColor = "#f59e0b"; // amber-500 - yellow
+    else bar.style.backgroundColor = "#cbd5e1";                  // slate-300 - pending placeholder
 
     if (isSelected) {
       // Raise the selected bar above the track and make it taller + thicker.
@@ -732,7 +735,26 @@
     );
   }
 
-  // User-initiated frame pick — turns off "follow latest" so their selection
+  // Pick the frame the "follow latest" cursor should pin to: the leading edge
+  // of whichever pass is currently committing in this pair. Within a pair,
+  // pass 2 (intent) always runs strictly after pass 1 (activity) - so once
+  // we've seen ANY intent state, the cursor should track intent-committed
+  // frames (which start over from the beginning of the video). Otherwise we
+  // track activity-committed frames.
+  function followTargetForPair(pair) {
+    const pairMap = allPairFrameStates.get(pair);
+    if (!pairMap || !pairMap.size) return null;
+    let intentMaxSec = -1, intentMaxTs = null;
+    let activityMaxSec = -1, activityMaxTs = null;
+    for (const [ts, st] of pairMap) {
+      const sec = frameTsToSeconds(ts);
+      if (st.intent && sec > intentMaxSec) { intentMaxSec = sec; intentMaxTs = ts; }
+      if (st.activity && sec > activityMaxSec) { activityMaxSec = sec; activityMaxTs = ts; }
+    }
+    return intentMaxTs || activityMaxTs;
+  }
+
+  // User-initiated frame pick - turns off "follow latest" so their selection
   // doesn't get yanked away by the next SSE tick.
   function selectFrame(ts) {
     if (!ts) return;
@@ -749,9 +771,10 @@
       els.frameLabel.textContent = "";
       return;
     }
-    // Default selection = latest processed frame in this pair.
+    // Default selection = frontier of whichever pass is currently committing
+    // in this pair (intent if any has fired, otherwise activity).
     if (!selectedTs || !pairFrameStates.has(selectedTs)) {
-      selectedTs = order[order.length - 1];
+      selectedTs = followTargetForPair(viewedPair) || order[order.length - 1];
       const st = pairFrameStates.get(selectedTs);
       if (st) paintBar(selectedTs, st);
     }
@@ -811,7 +834,7 @@
           <span class="text-xs text-indigo-600 font-medium">${passLabel}</span>
           ${conf ? `<span class="text-xs text-slate-500">${conf}</span>` : ""}
         </div>
-        <div class="text-sm text-slate-800 break-words">${escapeHtml(s.state || "—")}</div>
+        <div class="text-sm text-slate-800 break-words">${escapeHtml(s.state || "...")}</div>
       </div>`;
     return row;
   }
