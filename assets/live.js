@@ -810,11 +810,14 @@
       });
     }
 
-    // <defs>: per-edge arrowheads (so we can colour the active edge).
+    // <defs>: per-edge arrowheads. Three colors: idle slate, "out" red (active
+    // node is the source — the model is leaving this state), "in" green (active
+    // node is the destination — other states transition into it).
     const defs = svgEl("defs");
     defs.innerHTML =
       '<marker id="fsm-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker>' +
-      '<marker id="fsm-arrow-hot" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#4f46e5"/></marker>';
+      '<marker id="fsm-arrow-out" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#dc2626"/></marker>' +
+      '<marker id="fsm-arrow-in" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#059669"/></marker>';
     svg.appendChild(defs);
 
     // Edges first so nodes render on top.
@@ -839,14 +842,18 @@
         const mx = (sx + ex) / 2 - dy * 0.12;
         const my = (sy + ey) / 2 + dx * 0.12;
         const prob = count / totalOut;
-        const isHot = from === currentLabel;
+        const isOut = from === currentLabel;
+        const isIn = to === currentLabel;
+        let stroke = "#94a3b8", marker = "url(#fsm-arrow)", opacity = 0.45;
+        if (isOut) { stroke = "#dc2626"; marker = "url(#fsm-arrow-out)"; opacity = 0.9; }
+        else if (isIn) { stroke = "#059669"; marker = "url(#fsm-arrow-in)"; opacity = 0.9; }
         svg.appendChild(svgEl("path", {
           d: `M ${sx} ${sy} Q ${mx} ${my} ${ex} ${ey}`,
-          stroke: isHot ? "#4f46e5" : "#94a3b8",
+          stroke,
           "stroke-width": (1 + prob * 4).toFixed(2),
           fill: "none",
-          opacity: isHot ? 0.85 : 0.45,
-          "marker-end": isHot ? "url(#fsm-arrow-hot)" : "url(#fsm-arrow)",
+          opacity,
+          "marker-end": marker,
         }));
       }
     }
