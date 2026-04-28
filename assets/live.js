@@ -32,9 +32,14 @@
     queueDots: $("live-queue-dots"),
     playerWrap: $("live-player-wrap"),
     player: $("live-player"),
+    timelineTrack: $("live-timeline-track"),
     timelineBars: $("live-timeline-bars"),
     timelineEnd: $("live-timeline-end"),
     pairLabel: $("live-pair-label"),
+    framePrev: $("live-frame-prev"),
+    frameNext: $("live-frame-next"),
+    framePosition: $("live-frame-position"),
+    frameLabel: $("live-frame-label"),
     streamWrap: $("live-stream-wrap"),
     stream: $("live-stream"),
     newestBtn: $("live-newest"),
@@ -52,8 +57,11 @@
   // Per-job timeline state — rebuilt on every new submission.
   let jobMeta = null;       // { jobId, source, durationS, videoId|url, ytId }
   let currentPair = 0;      // pair index 1..6 (passes 1+2=1, 3+4=2, ...)
-  let pairFrameStates = new Map(); // ts → { activity: bool, intent: bool }
+  let pairFrameStates = new Map(); // ts → { activity: bool, intent: bool, label?: string }
   let barElByTs = new Map();       // ts → DOM bar element
+  let videoEl = null;       // <video> element if mp4 playback is available
+  let fallbackImg = null;   // <img> shown when no mp4 (e.g. EPIC-KITCHENS)
+  let selectedTs = null;    // user-clicked frame timestamp (slideshow focus)
 
   // Scroll detection — visitor-controlled scroll per design lock E1
   els.stream.addEventListener("scroll", () => {
@@ -198,30 +206,39 @@
     barElByTs.clear();
     pairFrameStates.clear();
     currentPair = 0;
+    selectedTs = null;
+    videoEl = null;
+    fallbackImg = null;
     els.timelineBars.innerHTML = "";
     els.pairLabel.textContent = "";
     els.timelineEnd.textContent = jobMeta.durationS ? fmtMMSS(jobMeta.durationS) : "—";
+    els.framePosition.textContent = "";
+    els.frameLabel.textContent = "";
 
-    if (jobMeta.source === "youtube" && jobMeta.ytId) {
-      const iframe = document.createElement("iframe");
-      iframe.src = `https://www.youtube.com/embed/${jobMeta.ytId}`;
-      iframe.className = "w-full h-full";
-      iframe.setAttribute("allow", "accelerometer; encrypted-media; picture-in-picture");
-      iframe.setAttribute("allowfullscreen", "");
-      els.player.appendChild(iframe);
-    } else {
-      // Library or YouTube without resolvable id: show the most recent processed frame.
-      const img = document.createElement("img");
-      img.id = "live-player-frame";
-      img.alt = "current frame";
-      img.className = "w-full h-full object-contain";
-      img.style.display = "none";
-      const placeholder = document.createElement("div");
-      placeholder.className = "text-xs text-slate-400";
-      placeholder.textContent = "Frames will appear here as they're processed.";
-      els.player.appendChild(placeholder);
-      els.player.appendChild(img);
-    }
+    // Try to use the actual mp4. The api serves both library and youtube videos
+    // at /jobs/<id>/video.mp4 (with a library fallback). If that 404s we hide
+    // <video> and reveal the per-frame fallback <img>.
+    const v = document.createElement("video");
+    v.controls = true;
+    v.preload = "metadata";
+    v.className = "w-full h-full object-contain bg-black";
+    v.src = `${apiBase}/jobs/${jobMeta.jobId}/video.mp4`;
+    v.addEventListener("error", () => {
+      v.style.display = "none";
+      if (fallbackImg) {
+        fallbackImg.style.display = "block";
+      }
+    });
+    els.player.appendChild(v);
+    videoEl = v;
+
+    // Fallback <img> for jobs without a usable mp4 (e.g. EK_*).
+    const img = document.createElement("img");
+    img.alt = "current frame";
+    img.className = "absolute inset-0 w-full h-full object-contain bg-black";
+    img.style.display = "none";
+    els.player.appendChild(img);
+    fallbackImg = img;
   }
 
   function startStreaming(jobId) {
@@ -419,6 +436,7 @@
       pairFrameStates.clear();
       barElByTs.clear();
       els.timelineBars.innerHTML = "";
+      // Don't clear selectedTs — let the user keep their slideshow focus.
     }
     els.pairLabel.textContent = `Current pair: passes ${currentPair * 2 - 1} & ${currentPair * 2}`;
 
@@ -434,27 +452,14 @@
       }
       if (isActivityPass(s.pass)) st.activity = true;
       else st.intent = true;
+      // Newest pass label wins.
+      st.label = s.state || st.label || "";
       ensureBarFor(ts);
       paintBar(ts, st);
     }
 
-    // Update the floating "current frame" image (library mode).
-    const frameImg = document.getElementById("live-player-frame");
-    if (frameImg) {
-      // Pick the latest frame_ts in the current pair (max seconds).
-      let bestTs = null, bestSec = -1;
-      for (const ts of pairFrameStates.keys()) {
-        const sec = frameTsToSeconds(ts);
-        if (sec > bestSec) { bestSec = sec; bestTs = ts; }
-      }
-      if (bestTs) {
-        const url = `${apiBase}/jobs/${jobMeta.jobId}/frames/${bestTs}.jpg`;
-        if (frameImg.src !== url) {
-          frameImg.src = url;
-          frameImg.onload = () => { frameImg.style.display = "block"; };
-        }
-      }
-    }
+    // Refresh the slideshow position display (count may have grown).
+    renderSelected();
   }
 
   function ensureBarFor(ts) {
@@ -463,11 +468,16 @@
     const sec = frameTsToSeconds(ts);
     const pct = Math.max(0, Math.min(100, (sec / jobMeta.durationS) * 100));
     const bar = document.createElement("div");
-    bar.className = "absolute top-0 bottom-0 transition-colors";
-    bar.style.left = `${pct}%`;
+    bar.className = "absolute top-0 bottom-0 transition-all rounded-sm cursor-pointer hover:opacity-80";
+    bar.style.left = `calc(${pct}% - 1.5px)`;
     bar.style.width = "3px";
     bar.style.backgroundColor = "transparent";
     bar.title = `${ts} (${fmtMMSS(sec)})`;
+    bar.dataset.ts = ts;
+    bar.addEventListener("click", (e) => {
+      e.stopPropagation();
+      selectFrame(ts);
+    });
     els.timelineBars.appendChild(bar);
     barElByTs.set(ts, bar);
   }
@@ -475,10 +485,121 @@
   function paintBar(ts, st) {
     const bar = barElByTs.get(ts);
     if (!bar) return;
+    const isSelected = ts === selectedTs;
     if (st.intent) bar.style.backgroundColor = "#10b981";       // emerald-500 — green
     else if (st.activity) bar.style.backgroundColor = "#f59e0b"; // amber-500 — yellow
-    else bar.style.backgroundColor = "transparent";
+    else bar.style.backgroundColor = "#cbd5e1";                  // slate-300 — pending placeholder
+
+    if (isSelected) {
+      // Raise the selected bar above the track and make it taller + thicker.
+      bar.style.top = "-6px";
+      bar.style.bottom = "-6px";
+      bar.style.width = "5px";
+      bar.style.left = `calc(${barLeftPercent(ts)}% - 2.5px)`;
+      bar.style.boxShadow = "0 0 0 2px white, 0 0 0 3px #4f46e5"; // indigo ring
+      bar.style.zIndex = "10";
+    } else {
+      bar.style.top = "0";
+      bar.style.bottom = "0";
+      bar.style.width = "3px";
+      bar.style.left = `calc(${barLeftPercent(ts)}% - 1.5px)`;
+      bar.style.boxShadow = "";
+      bar.style.zIndex = "";
+    }
   }
+
+  function barLeftPercent(ts) {
+    if (!jobMeta || !jobMeta.durationS) return 0;
+    const sec = frameTsToSeconds(ts);
+    return Math.max(0, Math.min(100, (sec / jobMeta.durationS) * 100));
+  }
+
+  // ─── slideshow / selected-frame logic ─────────────────────────────
+  function sortedFrameTs() {
+    return Array.from(pairFrameStates.keys()).sort(
+      (a, b) => frameTsToSeconds(a) - frameTsToSeconds(b)
+    );
+  }
+
+  function selectFrame(ts) {
+    if (!ts) return;
+    const prev = selectedTs;
+    selectedTs = ts;
+
+    // Repaint just the affected bars to update raised styling.
+    if (prev) {
+      const st = pairFrameStates.get(prev);
+      if (st) paintBar(prev, st);
+    }
+    const st = pairFrameStates.get(ts);
+    if (st) paintBar(ts, st);
+
+    // Seek the video (or update the fallback image) to the selected frame.
+    const sec = frameTsToSeconds(ts);
+    if (videoEl && videoEl.style.display !== "none" && !isNaN(videoEl.duration)) {
+      try { videoEl.currentTime = sec; } catch (_) {}
+    } else if (fallbackImg) {
+      fallbackImg.style.display = "block";
+      fallbackImg.src = `${apiBase}/jobs/${jobMeta.jobId}/frames/${ts}.jpg`;
+    }
+    renderSelected();
+  }
+
+  function renderSelected() {
+    const order = sortedFrameTs();
+    if (!order.length) {
+      els.framePrev.disabled = true;
+      els.frameNext.disabled = true;
+      els.framePosition.textContent = "";
+      els.frameLabel.textContent = "";
+      return;
+    }
+    // Default selection = latest processed frame in this pair.
+    if (!selectedTs || !pairFrameStates.has(selectedTs)) {
+      selectedTs = order[order.length - 1];
+      const st = pairFrameStates.get(selectedTs);
+      if (st) paintBar(selectedTs, st);
+    }
+    const idx = order.indexOf(selectedTs);
+    els.framePrev.disabled = idx <= 0;
+    els.frameNext.disabled = idx >= order.length - 1;
+    els.framePosition.textContent =
+      `frame ${idx + 1} / ${order.length} · ${fmtMMSS(frameTsToSeconds(selectedTs))}`;
+    const st = pairFrameStates.get(selectedTs);
+    els.frameLabel.textContent = (st && st.label) || "";
+
+    // Keep the fallback image in sync if it's the active player.
+    if (fallbackImg && fallbackImg.style.display === "block") {
+      const url = `${apiBase}/jobs/${jobMeta.jobId}/frames/${selectedTs}.jpg`;
+      if (fallbackImg.src !== url) fallbackImg.src = url;
+    }
+  }
+
+  function stepFrame(delta) {
+    const order = sortedFrameTs();
+    if (!order.length) return;
+    const idx = Math.max(0, order.indexOf(selectedTs));
+    const next = order[Math.min(order.length - 1, Math.max(0, idx + delta))];
+    selectFrame(next);
+  }
+
+  els.framePrev.addEventListener("click", () => stepFrame(-1));
+  els.frameNext.addEventListener("click", () => stepFrame(+1));
+  els.timelineTrack.addEventListener("click", (e) => {
+    // Click anywhere on the track → snap to the nearest frame.
+    if (!jobMeta || !jobMeta.durationS) return;
+    const order = sortedFrameTs();
+    if (!order.length) return;
+    const rect = els.timelineTrack.getBoundingClientRect();
+    const fraction = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetSec = fraction * jobMeta.durationS;
+    let best = order[0], bestDelta = Infinity;
+    for (const ts of order) {
+      const d = Math.abs(frameTsToSeconds(ts) - targetSec);
+      if (d < bestDelta) { bestDelta = d; best = ts; }
+    }
+    selectFrame(best);
+  });
 
   function renderStateRow(jobId, s) {
     const row = document.createElement("div");

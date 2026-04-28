@@ -299,17 +299,25 @@
             <h4 class="font-semibold">3. Video &amp; timeline</h4>
             <span id="live-pair-label" class="text-xs text-slate-500"></span>
           </div>
-          <div id="live-player" class="aspect-video bg-slate-100 rounded-md overflow-hidden mb-2 flex items-center justify-center text-slate-400 text-sm"></div>
-          <div class="relative h-6 bg-slate-100 rounded-md mb-1 overflow-hidden">
-            <div id="live-timeline-bars" class="absolute inset-0"></div>
+          <div id="live-player" class="aspect-video bg-slate-100 rounded-md overflow-hidden mb-2 flex items-center justify-center text-slate-400 text-sm relative"></div>
+          <div class="relative h-10 bg-slate-100 rounded-md mb-1 overflow-visible cursor-pointer" id="live-timeline-track">
+            <div id="live-timeline-bars" class="absolute inset-x-0 top-2 bottom-2"></div>
           </div>
           <div class="flex justify-between text-xs text-slate-400">
             <span>0:00</span>
             <span id="live-timeline-end">—</span>
           </div>
+          <div class="flex items-center justify-between mt-2 text-xs">
+            <div class="flex items-center gap-2">
+              <button id="live-frame-prev" class="px-2 py-1 rounded border border-slate-300 hover:bg-slate-100 disabled:opacity-30" title="Previous frame">←</button>
+              <button id="live-frame-next" class="px-2 py-1 rounded border border-slate-300 hover:bg-slate-100 disabled:opacity-30" title="Next frame">→</button>
+              <span id="live-frame-position" class="text-slate-500"></span>
+            </div>
+            <div id="live-frame-label" class="text-slate-700 font-medium truncate max-w-[55%]"></div>
+          </div>
           <p class="text-xs text-slate-500 mt-2">
-            Yellow bar = activity pass committed for that frame. Green bar = intent pass also committed (frame fully labeled in the current pair).
-            Both clear when the next pair of passes begins.
+            Yellow bar = activity pass committed. Green bar = intent pass also committed (frame fully labeled in the current pair).
+            Both clear when the next pair of passes begins. Click a bar (or use ← →) to jump the video to that frame.
           </p>
         </div>
       </div>
@@ -334,10 +342,10 @@
   <!-- DEMO -->
   <section class="bg-slate-50 border-y border-slate-200">
     <div class="max-w-5xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-5">SERUM dashboard — full pipeline output, 500+ videos</h3>
+      <h3 class="section-h text-2xl font-bold mb-5">SERUM dashboard — full pipeline output, 400+ videos</h3>
       <p class="text-slate-600 mb-6 max-w-3xl">
         The dashboard lets you explore the complete pipeline output (including the post-hoc analyses skipped by the live runner above)
-        across 500+ videos: per-pass refinement chains, FSM graphs synchronized to the video, normalized Markov transition matrices,
+        across 400+ videos: per-pass refinement chains, FSM graphs synchronized to the video, normalized Markov transition matrices,
         and confidence / perplexity diagnostics.
       </p>
       <div class="flex flex-wrap gap-3">
