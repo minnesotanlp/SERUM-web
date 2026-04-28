@@ -228,8 +228,78 @@
         <p class="text-sm text-slate-600 mt-3">61 egocentric videos across coding, cooking, physical activities, and daily-life domains.</p>
       </div>
       <div class="card">
-        <span class="pill mb-3">Interpretability</span>
-        <p class="text-sm text-slate-600 mt-3">Full provenance chain: every label is traceable back to a specific pass, prompt, and frame.</p>
+        <span class="pill mb-3">Predictive Power</span>
+        <p class="text-sm text-slate-600 mt-3">Normalized first-order Markov models substantially outperform frequency baselines in perplexity and next-action accuracy, with the largest gains on structured tasks like coding.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE INFERENCE -->
+  <section id="live" class="border-y border-slate-200 bg-gradient-to-b from-white to-slate-50">
+    <div class="max-w-5xl mx-auto px-6 py-16">
+      <h3 class="section-h text-2xl font-bold mb-3">Try SERUM live</h3>
+      <p class="text-slate-600 mb-8 max-w-3xl">
+        Run real SERUM inference in your browser. Pick a curated demo or paste a YouTube URL —
+        we'll extract frames and stream pass-by-pass label results as the model produces them.
+      </p>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="card">
+          <h4 class="font-semibold mb-3">1. Choose a video</h4>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Preloaded library</label>
+          <select id="live-library" class="w-full text-sm rounded-md border border-slate-300 px-3 py-2 mb-4 bg-white">
+            <option value="">— select a demo —</option>
+          </select>
+
+          <label class="block text-xs font-medium text-slate-500 mb-1">…or paste a YouTube URL</label>
+          <input id="live-yt-url" type="url" placeholder="https://www.youtube.com/watch?v=…"
+                 class="w-full text-sm rounded-md border border-slate-300 px-3 py-2 mb-2 bg-white" />
+          <p class="text-xs text-slate-500 italic mb-4">
+            Some restricted YouTube videos may fail to fetch (anti-scraping protections).
+          </p>
+
+          <button id="live-submit"
+                  class="btn btn-accent w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-bolt"></i> Run SERUM
+          </button>
+          <p id="live-error" class="hidden mt-3 text-sm text-rose-600"></p>
+          <p class="mt-4 text-xs text-slate-500">
+            Inference takes a few minutes per video. Pass 1 results appear at ~90 seconds; full
+            convergence by ~18 minutes for a 10-minute video. Leave the tab open to watch.
+          </p>
+        </div>
+
+        <div class="card">
+          <h4 class="font-semibold mb-3">2. Live status</h4>
+          <div id="live-status-idle" class="text-slate-500 text-sm">
+            Submit a video to see live inference.
+          </div>
+          <div id="live-status-active" class="hidden">
+            <div class="flex items-center gap-3 mb-3">
+              <span id="live-state-badge" class="pill">queued</span>
+              <span id="live-state-detail" class="text-xs text-slate-500"></span>
+            </div>
+            <div class="w-full bg-slate-200 h-2 rounded overflow-hidden mb-3">
+              <div id="live-progress-bar" class="h-full bg-indigo-500 transition-all" style="width:0%"></div>
+            </div>
+            <div class="text-xs text-slate-500" id="live-meta"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="live-stream-wrap" class="hidden mt-6">
+        <div class="card">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-semibold">3. State stream</h4>
+            <button id="live-newest"
+                    class="hidden text-xs px-3 py-1 rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
+              <span id="live-newest-count">0</span> new updates ↑
+            </button>
+          </div>
+          <div id="live-stream"
+               class="max-h-96 overflow-y-auto border border-slate-200 rounded-md divide-y divide-slate-100 text-sm">
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -237,7 +307,7 @@
   <!-- DEMO -->
   <section class="bg-slate-50 border-y border-slate-200">
     <div class="max-w-5xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-5">Interactive Demo</h3>
+      <h3 class="section-h text-2xl font-bold mb-5">Interactive Dashboard</h3>
       <p class="text-slate-600 mb-6 max-w-3xl">
         The live dashboard lets you explore extracted user models for 50+ videos, stepping through the video
         alongside a synchronized FSM graph, browsing refinement chains across passes, and inspecting Markov
@@ -277,5 +347,6 @@
     </div>
   </footer>
 
+  <script src="assets/live.js"></script>
 </body>
 </html>
