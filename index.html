@@ -127,11 +127,11 @@
         <a href="https://github.com/minnesotanlp/serum" class="btn btn-light" target="_blank" rel="noopener">
           <i class="fa-brands fa-github"></i> Code
         </a>
-        <a href="https://amir-fluviomarine-nia.ngrok-free.dev/" class="btn btn-accent" target="_blank" rel="noopener">
-          <i class="fa-solid fa-play"></i> Live Demo
+        <a href="#live" class="btn btn-accent">
+          <i class="fa-solid fa-bolt"></i> Try Live Demo
         </a>
-        <a href="https://supersmartly-nonhypostatical-evita.ngrok-free.dev/" class="btn btn-dark" target="_blank" rel="noopener">
-          <i class="fa-solid fa-link"></i> Demo (Mirror)
+        <a href="https://amir-fluviomarine-nia.ngrok-free.dev/" class="btn btn-dark" target="_blank" rel="noopener">
+          <i class="fa-solid fa-chart-line"></i> Open Dashboard
         </a>
       </div>
     </div>
@@ -277,6 +277,14 @@
               <span id="live-state-badge" class="pill">queued</span>
               <span id="live-state-detail" class="text-xs text-slate-500"></span>
             </div>
+            <div id="live-queue-card" class="hidden mb-3 rounded-md border border-amber-200 bg-amber-50 p-3">
+              <div class="flex items-baseline gap-2">
+                <span class="text-2xl font-bold text-amber-900" id="live-queue-pos">#—</span>
+                <span class="text-sm text-amber-800">in line</span>
+              </div>
+              <div class="text-xs text-amber-800 mt-1" id="live-queue-detail"></div>
+              <div class="flex gap-1 mt-2" id="live-queue-dots" aria-hidden="true"></div>
+            </div>
             <div class="w-full bg-slate-200 h-2 rounded overflow-hidden mb-3">
               <div id="live-progress-bar" class="h-full bg-indigo-500 transition-all" style="width:0%"></div>
             </div>
@@ -334,7 +342,7 @@
       </p>
       <div class="flex flex-wrap gap-3">
         <a href="https://amir-fluviomarine-nia.ngrok-free.dev/" class="btn btn-accent" target="_blank" rel="noopener">
-          <i class="fa-solid fa-play"></i> Launch Demo
+          <i class="fa-solid fa-chart-line"></i> Open Dashboard
         </a>
         <a href="https://supersmartly-nonhypostatical-evita.ngrok-free.dev/" class="btn btn-dark" target="_blank" rel="noopener">
           <i class="fa-solid fa-link"></i> Mirror

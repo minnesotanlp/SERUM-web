@@ -26,6 +26,10 @@
     stateDetail: $("live-state-detail"),
     progress: $("live-progress-bar"),
     meta: $("live-meta"),
+    queueCard: $("live-queue-card"),
+    queuePos: $("live-queue-pos"),
+    queueDetail: $("live-queue-detail"),
+    queueDots: $("live-queue-dots"),
     playerWrap: $("live-player-wrap"),
     player: $("live-player"),
     timelineBars: $("live-timeline-bars"),
@@ -270,6 +274,7 @@
     }
 
     setStatusBadge(state, statusDetail(status));
+    setQueueDisplay(status);
     setProgress(status);
     setMeta(status);
 
@@ -316,6 +321,38 @@
       return `done · ${status.passes_complete || 0} passes`;
     }
     return "";
+  }
+
+  function setQueueDisplay(status) {
+    if (status.state !== "queued") {
+      els.queueCard.classList.add("hidden");
+      return;
+    }
+    const pos = status.queue_position || 1;
+    const ahead = status.jobs_ahead != null ? status.jobs_ahead : Math.max(pos - 1, 0);
+    const waitS = status.est_wait_s != null ? status.est_wait_s : ahead * 360;
+    els.queueCard.classList.remove("hidden");
+    els.queuePos.textContent = `#${pos}`;
+
+    let detail;
+    if (ahead === 0) {
+      detail = "You're up next — starting shortly.";
+    } else {
+      const m = Math.max(1, Math.round(waitS / 60));
+      detail = `${ahead} ${ahead === 1 ? "job" : "jobs"} ahead of you · ~${m} min estimated wait`;
+    }
+    els.queueDetail.textContent = detail;
+
+    // Visual: dot row showing positions ahead (●) plus your position (★).
+    const total = ahead + 1;
+    const cap = Math.min(total, 12);
+    const dots = [];
+    for (let i = 0; i < cap - 1; i++) {
+      dots.push('<span class="w-2 h-2 rounded-full bg-amber-300 inline-block"></span>');
+    }
+    dots.push('<span class="w-2.5 h-2.5 rounded-full bg-amber-600 ring-2 ring-amber-200 inline-block"></span>');
+    if (total > cap) dots.unshift(`<span class="text-[10px] text-amber-700">+${total - cap} more</span>`);
+    els.queueDots.innerHTML = dots.join("");
   }
 
   function setProgress(status) {
