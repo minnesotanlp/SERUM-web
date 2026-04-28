@@ -30,6 +30,11 @@
     queuePos: $("live-queue-pos"),
     queueDetail: $("live-queue-detail"),
     queueDots: $("live-queue-dots"),
+    receipt: $("live-receipt"),
+    receiptJobId: $("live-receipt-jobid"),
+    receiptDetail: $("live-receipt-detail"),
+    stageHelp: $("live-stage-help"),
+    stageSteps: $("live-stage-steps"),
     playerWrap: $("live-player-wrap"),
     player: $("live-player"),
     timelineTrack: $("live-timeline-track"),
@@ -40,6 +45,9 @@
     frameNext: $("live-frame-next"),
     framePosition: $("live-frame-position"),
     frameLabel: $("live-frame-label"),
+    pairSelector: $("live-pair-selector"),
+    followToggle: $("live-follow-toggle"),
+    followToggleLabel: $("live-follow-toggle-label"),
     streamWrap: $("live-stream-wrap"),
     stream: $("live-stream"),
     newestBtn: $("live-newest"),
@@ -56,9 +64,15 @@
 
   // Per-job timeline state — rebuilt on every new submission.
   let jobMeta = null;       // { jobId, source, durationS, videoId|url, ytId }
-  let currentPair = 0;      // pair index 1..6 (passes 1+2=1, 3+4=2, ...)
-  let pairFrameStates = new Map(); // ts → { activity: bool, intent: bool, label?: string }
-  let barElByTs = new Map();       // ts → DOM bar element
+  // We keep state for ALL pairs (1..6); the user can switch which one they're
+  // viewing. `viewedPair` is the active view; `latestPair` tracks where the
+  // pipeline currently is, used by the "follow latest" toggle.
+  let allPairFrameStates = new Map(); // pair → Map<ts, {activity, intent, label?}>
+  let viewedPair = 0;
+  let latestPair = 0;
+  let pairFrameStates = new Map(); // alias = allPairFrameStates.get(viewedPair)
+  let followLatest = true;         // auto-jump to newest pair as it arrives
+  let barElByTs = new Map();       // ts → DOM bar element (for the viewed pair)
   let videoEl = null;       // <video> element if mp4 playback is available
   let fallbackImg = null;   // <img> shown when no mp4 (e.g. EPIC-KITCHENS)
   let selectedTs = null;    // user-clicked frame timestamp (slideshow focus)
@@ -163,6 +177,7 @@
       // Pull duration from the response if the api returns it (overrides our guess for YT).
       if (data.duration_s) sourceMeta.durationS = data.duration_s;
       jobMeta = { jobId: data.job_id, ...sourceMeta };
+      showReceipt(data);
       startStreaming(data.job_id);
       renderPlayer();
     } catch (e) {
@@ -204,9 +219,14 @@
     els.playerWrap.classList.remove("hidden");
     els.player.innerHTML = "";
     barElByTs.clear();
-    pairFrameStates.clear();
-    currentPair = 0;
+    allPairFrameStates.clear();
+    pairFrameStates = new Map();
+    viewedPair = 0;
+    latestPair = 0;
+    followLatest = true;
     selectedTs = null;
+    setFollowToggleLabel();
+    renderPairSelector();
     videoEl = null;
     fallbackImg = null;
     els.timelineBars.innerHTML = "";
@@ -254,6 +274,10 @@
     els.newestBtn.classList.add("hidden");
 
     setStatusBadge("queued", "Submitting your job…");
+    // Pre-populate the stage checklist + help text so the user sees something
+    // useful in the brief window before the first SSE message lands.
+    setStageHelp({ state: "queued" });
+    setStageSteps({ state: "queued" });
 
     const url = `${apiBase}/jobs/${jobId}/stream`;
     evtSource = new EventSource(url);
@@ -291,6 +315,8 @@
     }
 
     setStatusBadge(state, statusDetail(status));
+    setStageHelp(status);
+    setStageSteps(status);
     setQueueDisplay(status);
     setProgress(status);
     setMeta(status);
@@ -338,6 +364,80 @@
       return `done · ${status.passes_complete || 0} passes`;
     }
     return "";
+  }
+
+  // Shown immediately on POST /jobs success — independent of SSE reconnects.
+  function showReceipt(postResp) {
+    if (!postResp || !postResp.job_id) return;
+    els.receipt.classList.remove("hidden");
+    els.receiptJobId.textContent = postResp.job_id;
+    const bits = [];
+    if (postResp.title) bits.push(postResp.title);
+    if (postResp.duration_s) bits.push(`${(postResp.duration_s / 60).toFixed(1)} min source`);
+    if (Array.isArray(postResp.cancelled_prior) && postResp.cancelled_prior.length) {
+      bits.push(`replaced prior run · ${postResp.cancelled_prior.join(", ")}`);
+    }
+    const ahead = postResp.jobs_ahead != null ? postResp.jobs_ahead : null;
+    if (ahead === 0) bits.push("starting now");
+    else if (ahead === 1) bits.push("1 job ahead of you");
+    else if (ahead != null) bits.push(`${ahead} jobs ahead of you`);
+    bits.push("opening live stream…");
+    els.receiptDetail.textContent = bits.join(" · ");
+  }
+
+  // Per-state human-readable explanation. Tells the user what's actually
+  // happening so they understand why nothing has appeared on screen yet.
+  const STAGE_HELP = {
+    queued: "You're in the FIFO queue. The pipeline runs one job at a time so we can give the GPU full bandwidth for your video. As soon as the slot opens, your job starts.",
+    starting: "Worker accepted your job. Setting up the per-job manifest tree, verifying the inference server is healthy, and preparing to extract frames.",
+    extracting: "Decoding the video and pulling one frame every 5 seconds. About 30 seconds per minute of source for YouTube; instant for library demos (frames are pre-staged).",
+    extracted: "Frames are ready. Spawning the GUM inference container and warming up the vLLM model — first pass kicks off in ~20 seconds.",
+    running: "Running the 12-pass alternating activity ↔ intent labelling loop. Each pass labels every frame; activity passes refine what's happening, intent passes infer why.",
+    complete: "All 12 passes committed. The state stream below shows what the model saw at each frame; the timeline above lets you scrub through.",
+    failed: "Pipeline error — see the details above. You can resubmit the same video; resubmissions automatically cancel your previous run.",
+    cancelled: "Run was superseded — either by you submitting a newer job or by a worker restart.",
+  };
+
+  function setStageHelp(status) {
+    const text = STAGE_HELP[status.state] || "";
+    els.stageHelp.textContent = text;
+  }
+
+  // Render a small checklist showing which stages are done / active / pending.
+  // The list is fixed; the marker and color tell you where you are.
+  const STAGE_ORDER = [
+    { key: "queued",     label: "Queued" },
+    { key: "starting",   label: "Worker pickup" },
+    { key: "extracting", label: "Frame extraction" },
+    { key: "extracted",  label: "Inference warm-up" },
+    { key: "running",    label: "12-pass labelling" },
+    { key: "complete",   label: "Done" },
+  ];
+  // Map current state → index into STAGE_ORDER.
+  function stageIndex(state) {
+    const i = STAGE_ORDER.findIndex((s) => s.key === state);
+    if (i >= 0) return i;
+    if (state === "failed" || state === "cancelled") return -1;
+    return 0;
+  }
+
+  function setStageSteps(status) {
+    const idx = stageIndex(status.state);
+    const isTerminal = status.state === "failed" || status.state === "cancelled";
+    const html = STAGE_ORDER.map((stg, i) => {
+      let icon, color;
+      if (isTerminal && i > 0) {
+        icon = "·"; color = "text-slate-300";
+      } else if (i < idx || status.state === "complete") {
+        icon = "✓"; color = "text-emerald-600";
+      } else if (i === idx) {
+        icon = "⟳"; color = "text-indigo-600 font-medium";
+      } else {
+        icon = "·"; color = "text-slate-300";
+      }
+      return `<li class="${color}"><span class="inline-block w-4 text-center">${icon}</span> ${stg.label}</li>`;
+    }).join("");
+    els.stageSteps.innerHTML = html;
   }
 
   function setQueueDisplay(status) {
@@ -418,48 +518,159 @@
   // True for activity passes (odd), false for intent passes (even).
   function isActivityPass(pass) { return pass % 2 === 1; }
 
-  // Walk all states and rebuild the bar overlay for the *current* pair only.
-  // Earlier pairs are intentionally cleared so the timeline always reflects
-  // "what we know about the in-flight pair right now".
+  // Receive state events from SSE: store them by pair, and (if the user is
+  // following along) auto-advance the viewed pair to whatever's freshest.
+  // The user can manually pick a pair via the selector or click a bar; that
+  // turns "follow latest" off.
   function updateTimelineFromStates(states) {
     if (!jobMeta || !jobMeta.durationS) return;
     if (!states.length) return;
 
-    // Newest pair = max pair across all incoming states.
-    let maxPair = 0;
-    for (const s of states) maxPair = Math.max(maxPair, pairOf(s.pass || 0));
-    if (maxPair < 1) return;
-
-    if (maxPair !== currentPair) {
-      // New pair started → clear the track and the per-frame map.
-      currentPair = maxPair;
-      pairFrameStates.clear();
-      barElByTs.clear();
-      els.timelineBars.innerHTML = "";
-      // Don't clear selectedTs — let the user keep their slideshow focus.
-    }
-    els.pairLabel.textContent = `Current pair: passes ${currentPair * 2 - 1} & ${currentPair * 2}`;
-
-    // Only consider states from the current pair.
+    let sawAnyPair = 0;
     for (const s of states) {
-      if (pairOf(s.pass || 0) !== currentPair) continue;
+      const p = pairOf(s.pass || 0);
+      if (p < 1) continue;
+      sawAnyPair = Math.max(sawAnyPair, p);
       const ts = s.frame_ts;
       if (!ts) continue;
-      let st = pairFrameStates.get(ts);
+      let pairMap = allPairFrameStates.get(p);
+      if (!pairMap) { pairMap = new Map(); allPairFrameStates.set(p, pairMap); }
+      let st = pairMap.get(ts);
       if (!st) {
         st = { activity: false, intent: false };
-        pairFrameStates.set(ts, st);
+        pairMap.set(ts, st);
       }
       if (isActivityPass(s.pass)) st.activity = true;
       else st.intent = true;
-      // Newest pass label wins.
       st.label = s.state || st.label || "";
+    }
+    if (sawAnyPair < 1) return;
+    latestPair = Math.max(latestPair, sawAnyPair);
+
+    if (followLatest && viewedPair !== latestPair) {
+      switchToPair(latestPair, /*autoAdvanceSelection*/ true);
+    } else if (viewedPair === 0) {
+      switchToPair(latestPair, /*autoAdvanceSelection*/ true);
+    } else {
+      // Same viewed pair, but new frames may have arrived — repaint.
+      renderBarsForViewedPair(/*advanceSelection*/ followLatest);
+    }
+    renderPairSelector();
+    renderSelected();
+  }
+
+  // Switch the timeline+slideshow view to a specific pair. Used both by
+  // follow-along auto-advance and by user clicks on the pair selector.
+  function switchToPair(pair, autoAdvanceSelection) {
+    viewedPair = pair;
+    pairFrameStates = allPairFrameStates.get(pair) || new Map();
+    barElByTs.clear();
+    els.timelineBars.innerHTML = "";
+    els.pairLabel.textContent =
+      `Pair ${pair} — passes ${pair * 2 - 1} & ${pair * 2}`;
+    // Reset selection to "newest in this pair" so the user lands on something
+    // sensible. selectFrame() / framePrev/Next will let them browse from there.
+    if (autoAdvanceSelection) selectedTs = null;
+    renderBarsForViewedPair(/*advanceSelection*/ autoAdvanceSelection);
+  }
+
+  function renderBarsForViewedPair(advanceSelection) {
+    for (const [ts, st] of pairFrameStates) {
       ensureBarFor(ts);
       paintBar(ts, st);
     }
+    if (advanceSelection) {
+      // Auto-pin to the newest frame in the viewed pair (so live runs feel live).
+      const order = sortedFrameTs();
+      if (order.length) selectedTs = order[order.length - 1];
+    }
+  }
 
-    // Refresh the slideshow position display (count may have grown).
+  // ─── pair selector + follow toggle ────────────────────────────────
+  function renderPairSelector() {
+    if (!els.pairSelector) return;
+    const cells = [];
+    for (let p = 1; p <= 6; p++) {
+      const has = allPairFrameStates.has(p);
+      const active = p === viewedPair;
+      const cls = active
+        ? "px-2 py-0.5 rounded text-xs font-medium bg-indigo-600 text-white"
+        : has
+          ? "px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer"
+          : "px-2 py-0.5 rounded text-xs bg-slate-50 text-slate-300 cursor-not-allowed";
+      cells.push(`<button type="button" data-pair="${p}" class="${cls}"${has ? "" : " disabled"}>P${p * 2 - 1}+${p * 2}</button>`);
+    }
+    els.pairSelector.innerHTML = cells.join("");
+    for (const btn of els.pairSelector.querySelectorAll("button[data-pair]")) {
+      btn.addEventListener("click", () => {
+        const p = Number(btn.dataset.pair);
+        if (!allPairFrameStates.has(p)) return;
+        // Manual pick → stop following.
+        if (followLatest) setFollow(false);
+        switchToPair(p, /*autoAdvanceSelection*/ true);
+        renderPairSelector();
+        renderSelected();
+      });
+    }
+  }
+
+  function setFollow(on) {
+    followLatest = !!on;
+    setFollowToggleLabel();
+    if (followLatest) {
+      // Snap to latest pair + latest frame immediately.
+      if (latestPair && viewedPair !== latestPair) {
+        switchToPair(latestPair, /*autoAdvanceSelection*/ true);
+      } else {
+        const order = sortedFrameTs();
+        if (order.length) selectFrameQuiet(order[order.length - 1]);
+      }
+      renderPairSelector();
+      renderSelected();
+    }
+  }
+
+  function setFollowToggleLabel() {
+    if (!els.followToggle) return;
+    if (followLatest) {
+      els.followToggle.classList.remove("bg-slate-50", "text-slate-600", "border-slate-200");
+      els.followToggle.classList.add("bg-indigo-50", "text-indigo-700", "border-indigo-200");
+      els.followToggleLabel.textContent = "Following latest";
+    } else {
+      els.followToggle.classList.remove("bg-indigo-50", "text-indigo-700", "border-indigo-200");
+      els.followToggle.classList.add("bg-slate-50", "text-slate-600", "border-slate-200");
+      els.followToggleLabel.textContent = "Paused — click to follow";
+    }
+  }
+
+  if (els.followToggle) {
+    els.followToggle.addEventListener("click", () => setFollow(!followLatest));
+  }
+
+  // Internal version of selectFrame that doesn't toggle follow off (used when
+  // follow itself is moving the cursor).
+  function selectFrameQuiet(ts) {
+    if (!ts) return;
+    const prev = selectedTs;
+    selectedTs = ts;
+    if (prev) {
+      const st = pairFrameStates.get(prev);
+      if (st) paintBar(prev, st);
+    }
+    const st = pairFrameStates.get(ts);
+    if (st) paintBar(ts, st);
+    seekVideoTo(ts);
     renderSelected();
+  }
+
+  function seekVideoTo(ts) {
+    const sec = frameTsToSeconds(ts);
+    if (videoEl && videoEl.style.display !== "none" && !isNaN(videoEl.duration)) {
+      try { videoEl.currentTime = sec; } catch (_) {}
+    } else if (fallbackImg) {
+      fallbackImg.style.display = "block";
+      fallbackImg.src = `${apiBase}/jobs/${jobMeta.jobId}/frames/${ts}.jpg`;
+    }
   }
 
   function ensureBarFor(ts) {
@@ -521,28 +732,12 @@
     );
   }
 
+  // User-initiated frame pick — turns off "follow latest" so their selection
+  // doesn't get yanked away by the next SSE tick.
   function selectFrame(ts) {
     if (!ts) return;
-    const prev = selectedTs;
-    selectedTs = ts;
-
-    // Repaint just the affected bars to update raised styling.
-    if (prev) {
-      const st = pairFrameStates.get(prev);
-      if (st) paintBar(prev, st);
-    }
-    const st = pairFrameStates.get(ts);
-    if (st) paintBar(ts, st);
-
-    // Seek the video (or update the fallback image) to the selected frame.
-    const sec = frameTsToSeconds(ts);
-    if (videoEl && videoEl.style.display !== "none" && !isNaN(videoEl.duration)) {
-      try { videoEl.currentTime = sec; } catch (_) {}
-    } else if (fallbackImg) {
-      fallbackImg.style.display = "block";
-      fallbackImg.src = `${apiBase}/jobs/${jobMeta.jobId}/frames/${ts}.jpg`;
-    }
-    renderSelected();
+    if (followLatest) setFollow(false);
+    selectFrameQuiet(ts);
   }
 
   function renderSelected() {

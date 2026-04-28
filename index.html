@@ -273,10 +273,20 @@
             Submit a video to see live inference.
           </div>
           <div id="live-status-active" class="hidden">
-            <div class="flex items-center gap-3 mb-3">
+            <div id="live-receipt" class="hidden mb-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+              <div class="flex items-baseline gap-2 font-medium">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Job received</span>
+                <span class="text-xs font-mono text-emerald-700" id="live-receipt-jobid"></span>
+              </div>
+              <div class="text-xs text-emerald-800 mt-1" id="live-receipt-detail"></div>
+            </div>
+            <div class="flex items-center gap-3 mb-2">
               <span id="live-state-badge" class="pill">queued</span>
               <span id="live-state-detail" class="text-xs text-slate-500"></span>
             </div>
+            <div id="live-stage-help" class="text-xs text-slate-600 mb-3 leading-snug"></div>
+            <ol id="live-stage-steps" class="text-xs text-slate-500 mb-3 space-y-1"></ol>
             <div id="live-queue-card" class="hidden mb-3 rounded-md border border-amber-200 bg-amber-50 p-3">
               <div class="flex items-baseline gap-2">
                 <span class="text-2xl font-bold text-amber-900" id="live-queue-pos">#—</span>
@@ -295,9 +305,18 @@
 
       <div id="live-player-wrap" class="hidden mt-6">
         <div class="card">
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h4 class="font-semibold">3. Video &amp; timeline</h4>
-            <span id="live-pair-label" class="text-xs text-slate-500"></span>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs text-slate-500" id="live-pair-label"></span>
+              <div id="live-pair-selector" class="flex gap-1" aria-label="Choose pass pair"></div>
+              <button id="live-follow-toggle"
+                      class="text-xs px-2 py-1 rounded border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                      title="Auto-jump to the latest pair as the run progresses">
+                <i class="fa-solid fa-rss"></i>
+                <span id="live-follow-toggle-label">Following latest</span>
+              </button>
+            </div>
           </div>
           <div id="live-player" class="aspect-video bg-slate-100 rounded-md overflow-hidden mb-2 flex items-center justify-center text-slate-400 text-sm relative"></div>
           <div class="relative h-10 bg-slate-100 rounded-md mb-1 overflow-visible cursor-pointer" id="live-timeline-track">
