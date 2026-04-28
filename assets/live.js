@@ -820,11 +820,9 @@
       '<marker id="fsm-arrow-in" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#059669"/></marker>';
     svg.appendChild(defs);
 
-    // Edges first so nodes render on top.
-    let maxOutCount = 1;
-    for (const outs of graph.transitions.values()) {
-      for (const c of outs.values()) maxOutCount = Math.max(maxOutCount, c);
-    }
+    // Edges first so nodes render on top. Two passes: idle edges below, then
+    // focused (red-out / green-in) edges on top so they're never occluded.
+    const idleEdges = [], focusedEdges = [];
     for (const [from, outs] of graph.transitions) {
       const fromPos = pos.get(from);
       const totalOut = Array.from(outs.values()).reduce((a, b) => a + b, 0);
@@ -833,12 +831,10 @@
         if (!fromPos || !toPos) continue;
         const dx = toPos.x - fromPos.x, dy = toPos.y - fromPos.y;
         const len = Math.hypot(dx, dy) || 1;
-        // Trim endpoints so the arrowhead lands at the node border.
         const sx = fromPos.x + (dx / len) * nodeR;
         const sy = fromPos.y + (dy / len) * nodeR;
         const ex = toPos.x - (dx / len) * (nodeR + 4);
         const ey = toPos.y - (dy / len) * (nodeR + 4);
-        // Slight curve so opposing transitions don't overlap.
         const mx = (sx + ex) / 2 - dy * 0.12;
         const my = (sy + ey) / 2 + dx * 0.12;
         const prob = count / totalOut;
@@ -847,31 +843,47 @@
         let stroke = "#94a3b8", marker = "url(#fsm-arrow)", opacity = 0.45;
         if (isOut) { stroke = "#dc2626"; marker = "url(#fsm-arrow-out)"; opacity = 0.9; }
         else if (isIn) { stroke = "#059669"; marker = "url(#fsm-arrow-in)"; opacity = 0.9; }
-        svg.appendChild(svgEl("path", {
+        const path = svgEl("path", {
           d: `M ${sx} ${sy} Q ${mx} ${my} ${ex} ${ey}`,
           stroke,
           "stroke-width": (1 + prob * 4).toFixed(2),
           fill: "none",
           opacity,
           "marker-end": marker,
-        }));
+        });
+        (isOut || isIn ? focusedEdges : idleEdges).push(path);
       }
     }
+    for (const e of idleEdges) svg.appendChild(e);
+    for (const e of focusedEdges) svg.appendChild(e);
 
-    // Nodes. Render the inactive ones first; the active node + its label go
-    // last so they always sit on top (so the text isn't clipped by neighbours).
-    function paintNode(label) {
+    // Nodes. Three z-tiers (bottom → top):
+    //   1. unrelated inactive nodes (truncated label, plain text)
+    //   2. related inactive nodes (full label + white halo, same colors)
+    //   3. active node (indigo + full label + halo, on top of everything)
+    // Nodes are "related" when there's an observed transition between them and
+    // the active node in either direction.
+    const related = new Set();
+    if (currentLabel) {
+      const outs = graph.transitions.get(currentLabel);
+      if (outs) for (const to of outs.keys()) related.add(to);
+      for (const [from, outMap] of graph.transitions) {
+        if (outMap.has(currentLabel)) related.add(from);
+      }
+      related.delete(currentLabel);
+    }
+
+    function paintNode(label, tier) {
       const p = pos.get(label);
-      const isActive = label === currentLabel;
+      const isActive = tier === "active";
+      const showFull = tier === "active" || tier === "related";
       svg.appendChild(svgEl("circle", {
         cx: p.x, cy: p.y, r: nodeR,
         fill: isActive ? "#4f46e5" : "#ffffff",
         stroke: isActive ? "#3730a3" : "#cbd5e1",
         "stroke-width": isActive ? 2.5 : 1.5,
       }));
-      // Active node shows the full label (no truncation, larger, with a halo
-      // so it stays readable on top of any neighbours).
-      const display = isActive
+      const display = showFull
         ? label
         : (label.length > 16 ? label.slice(0, 14) + "…" : label);
       const t = svgEl("text", {
@@ -881,8 +893,8 @@
         "font-weight": isActive ? 600 : 400,
         fill: isActive ? "#3730a3" : "#475569",
       });
-      if (isActive) {
-        // White halo behind the active label to keep it legible above siblings.
+      if (showFull) {
+        // White halo behind the label keeps it legible above any sibling node.
         t.setAttribute("paint-order", "stroke");
         t.setAttribute("stroke", "#ffffff");
         t.setAttribute("stroke-width", "3");
@@ -891,10 +903,17 @@
       t.textContent = display;
       svg.appendChild(t);
     }
+    // Tier 1: unrelated inactives.
     for (const label of graph.labels) {
-      if (label !== currentLabel) paintNode(label);
+      if (label === currentLabel || related.has(label)) continue;
+      paintNode(label, "unrelated");
     }
-    if (currentLabel && pos.has(currentLabel)) paintNode(currentLabel);
+    // Tier 2: related inactives.
+    for (const label of graph.labels) {
+      if (related.has(label)) paintNode(label, "related");
+    }
+    // Tier 3: active.
+    if (currentLabel && pos.has(currentLabel)) paintNode(currentLabel, "active");
 
     els.fsmMeta.textContent =
       `${graph.labels.length} states · ${countTransitions(graph.transitions)} edges`;
