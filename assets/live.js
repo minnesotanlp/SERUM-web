@@ -858,8 +858,9 @@
       }
     }
 
-    // Nodes.
-    for (const label of graph.labels) {
+    // Nodes. Render the inactive ones first; the active node + its label go
+    // last so they always sit on top (so the text isn't clipped by neighbours).
+    function paintNode(label) {
       const p = pos.get(label);
       const isActive = label === currentLabel;
       svg.appendChild(svgEl("circle", {
@@ -868,17 +869,32 @@
         stroke: isActive ? "#3730a3" : "#cbd5e1",
         "stroke-width": isActive ? 2.5 : 1.5,
       }));
-      const display = label.length > 16 ? label.slice(0, 14) + "…" : label;
+      // Active node shows the full label (no truncation, larger, with a halo
+      // so it stays readable on top of any neighbours).
+      const display = isActive
+        ? label
+        : (label.length > 16 ? label.slice(0, 14) + "…" : label);
       const t = svgEl("text", {
-        x: p.x, y: p.y + nodeR + 11,
+        x: p.x, y: p.y + nodeR + (isActive ? 13 : 11),
         "text-anchor": "middle",
-        "font-size": 10,
+        "font-size": isActive ? 11 : 10,
         "font-weight": isActive ? 600 : 400,
         fill: isActive ? "#3730a3" : "#475569",
       });
+      if (isActive) {
+        // White halo behind the active label to keep it legible above siblings.
+        t.setAttribute("paint-order", "stroke");
+        t.setAttribute("stroke", "#ffffff");
+        t.setAttribute("stroke-width", "3");
+        t.setAttribute("stroke-linejoin", "round");
+      }
       t.textContent = display;
       svg.appendChild(t);
     }
+    for (const label of graph.labels) {
+      if (label !== currentLabel) paintNode(label);
+    }
+    if (currentLabel && pos.has(currentLabel)) paintNode(currentLabel);
 
     els.fsmMeta.textContent =
       `${graph.labels.length} states · ${countTransitions(graph.transitions)} edges`;
