@@ -137,27 +137,29 @@
     </div>
   </section>
 
-  <!-- ABSTRACT -->
+  <!-- SERUM OVERVIEW -->
   <section class="max-w-4xl mx-auto px-6 py-16">
-    <h3 class="section-h text-2xl font-bold mb-5">Abstract</h3>
-    <p class="text-slate-700 leading-relaxed">
-      Agentic assistants capable of proactive, personalized interactions require structured models of user intent
-      and workflow. However, building these models from raw, unstructured screen activity remains an open challenge.
-      We present <strong>SERUM</strong>, a multi-pass framework that extracts finite-state behavioral models directly
-      from unstructured egocentric video using hierarchical VLM annotation. Processing screen recordings through a
-      sliding window, SERUM alternates between activity-recognition and intent-inference passes, with each pass
-      refining labels using accumulated prior context to reduce hallucination and temporal conflation seen in
-      single-pass annotation. Synonymous states are then merged via sentence embeddings and human-calibrated
-      thresholds into a compact, coherent taxonomy. We evaluate behavioral structure by fitting first-order Markov
-      models over the resulting label sequences and measuring predictive accuracy against frequency baselines.
-      Across 61 egocentric videos in four domains (coding, cooking, physical activities, and daily life), we find:
-      (1) iterative label refinement converges to a stable state vocabulary, which we term
-      <em>schematic equilibrium</em>, after several passes; (2) normalized Markov models achieve substantially
-      lower perplexity and higher action-prediction accuracy than frequency baselines, with the largest gains on
-      structured tasks like coding; and (3) human annotators rate final-pass labels as accurate and meaningfully
-      improved over first-pass labels. To our knowledge, SERUM is the first system to produce interpretable process
-      models from unstructured egocentric screen video without manual annotation.
+    <h3 class="section-h text-2xl font-bold mb-5">SERUM Overview</h3>
+    <p class="text-slate-700 leading-relaxed text-lg">
+      <strong>SERUM</strong> extracts finite-state behavioral models from unstructured egocentric video using multi-pass VLM annotation.
     </p>
+  </section>
+
+  <!-- SERUM (gifs) -->
+  <section class="bg-slate-50 border-y border-slate-200">
+    <div class="max-w-6xl mx-auto px-6 py-16">
+      <h3 class="section-h text-2xl font-bold mb-8">SERUM</h3>
+      <div class="space-y-5">
+        <img src="assets/gifs/1.gif" alt="SERUM pipeline overview" loading="lazy"
+             class="w-full rounded-lg border border-slate-200 shadow-sm" />
+        <div class="grid md:grid-cols-2 gap-5">
+          <img src="assets/gifs/2.gif" alt="SERUM annotation passes" loading="lazy"
+               class="w-full rounded-lg border border-slate-200 shadow-sm" />
+          <img src="assets/gifs/3.gif" alt="SERUM result visualization" loading="lazy"
+               class="w-full rounded-lg border border-slate-200 shadow-sm" />
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- LIVE INFERENCE -->
