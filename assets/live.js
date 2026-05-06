@@ -12,6 +12,8 @@
     return (params.get("api") || DEFAULT_API_BASE).replace(/\/$/, "");
   })();
   const SCHEMA_VERSION = 1;
+  // Frames are extracted at this stride; arrow nav advances the same amount.
+  const FRAME_INTERVAL_S = 5;
 
   const $ = (id) => document.getElementById(id);
 
@@ -244,8 +246,10 @@
     if (els.fsmMeta) els.fsmMeta.textContent = "";
 
     // Try to use the actual mp4. The api serves both library and youtube videos
-    // at /jobs/<id>/video.mp4 (with a library fallback). If that 404s we hide
-    // <video> and reveal the per-frame fallback <img>.
+    // at /jobs/<id>/video.mp4 (with a library fallback). For YouTube the worker
+    // stages source.mp4 *during* the extracting stage, so the first load attempt
+    // (right after POST /jobs returns) typically 404s. We retry on a backoff
+    // until it succeeds or the job ends, then reveal the <video> element again.
     const v = document.createElement("video");
     v.controls = true;
     v.preload = "metadata";
@@ -253,9 +257,13 @@
     v.src = `${apiBase}/jobs/${jobMeta.jobId}/video.mp4`;
     v.addEventListener("error", () => {
       v.style.display = "none";
-      if (fallbackImg) {
-        fallbackImg.style.display = "block";
-      }
+      if (fallbackImg) fallbackImg.style.display = "block";
+    });
+    v.addEventListener("loadedmetadata", () => {
+      // mp4 came through (possibly after one or more retries). Re-show video,
+      // hide fallback img.
+      v.style.display = "";
+      if (fallbackImg) fallbackImg.style.display = "none";
     });
     els.player.appendChild(v);
     videoEl = v;
@@ -328,6 +336,18 @@
     setQueueDisplay(status);
     setProgress(status);
     setMeta(status);
+
+    // Retry the mp4 once the worker is past the extracting stage. yt-dlp finishes
+    // staging source.mp4 between "extracting" and "extracted"; the original
+    // <video> load attempt right after POST /jobs typically 404s for YouTube
+    // jobs. Calling .load() again triggers a new request.
+    if (videoEl && videoEl.style.display === "none"
+        && (state === "extracted" || state === "running" || state === "complete")) {
+      try {
+        videoEl.src = `${apiBase}/jobs/${jobId}/video.mp4?t=${Date.now()}`;
+        videoEl.load();
+      } catch (_) {}
+    }
 
     if (Array.isArray(status.recent_states)) {
       mergeRecentStates(jobId, status.recent_states);
@@ -975,11 +995,16 @@
       const st = pairFrameStates.get(selectedTs);
       if (st) paintBar(selectedTs, st);
     }
+    // Disable buttons at the video's edges, not at the edges of the (possibly
+    // sparse) processed-frames list, since arrow nav now moves by stride.
+    const curSec = currentNavSec();
+    els.framePrev.disabled = curSec < FRAME_INTERVAL_S;
+    els.frameNext.disabled = jobMeta && jobMeta.durationS
+      ? curSec >= jobMeta.durationS - FRAME_INTERVAL_S
+      : false;
     const idx = order.indexOf(selectedTs);
-    els.framePrev.disabled = idx <= 0;
-    els.frameNext.disabled = idx >= order.length - 1;
     els.framePosition.textContent =
-      `frame ${idx + 1} / ${order.length} · ${fmtMMSS(frameTsToSeconds(selectedTs))}`;
+      `frame ${idx >= 0 ? idx + 1 : "?"} / ${order.length} · ${fmtMMSS(frameTsToSeconds(selectedTs))}`;
     const st = pairFrameStates.get(selectedTs);
     els.frameLabel.textContent = (st && st.label) || "";
 
@@ -994,12 +1019,45 @@
     updateFSMForViewedPair();
   }
 
+  // Reference seconds for stride nav: prefer the video's actual play position
+  // when available, otherwise the selected frame, otherwise 0.
+  function currentNavSec() {
+    if (videoEl && !isNaN(videoEl.currentTime) && videoEl.currentTime > 0) {
+      return videoEl.currentTime;
+    }
+    if (selectedTs) return frameTsToSeconds(selectedTs);
+    return 0;
+  }
+
+  // Stride nav: advance / recede by exactly FRAME_INTERVAL_S seconds, regardless
+  // of which frames have arrived in the current pair. The timeline cursor still
+  // snaps to the closest *processed* frame in the viewed pair so the FSM and
+  // frame label stay coherent.
   function stepFrame(delta) {
+    if (!jobMeta || !jobMeta.durationS) return;
+    // Snap reference to the 5 s grid before stepping so successive presses are stable.
+    const refSnapped = Math.round(currentNavSec() / FRAME_INTERVAL_S) * FRAME_INTERVAL_S;
+    const targetSec = Math.max(0, Math.min(jobMeta.durationS,
+                                           refSnapped + delta * FRAME_INTERVAL_S));
+    // Find nearest known frame_ts in the viewed pair to update cursor + label.
     const order = sortedFrameTs();
-    if (!order.length) return;
-    const idx = Math.max(0, order.indexOf(selectedTs));
-    const next = order[Math.min(order.length - 1, Math.max(0, idx + delta))];
-    selectFrame(next);
+    let best = null, bestDelta = Infinity;
+    for (const ts of order) {
+      const d = Math.abs(frameTsToSeconds(ts) - targetSec);
+      if (d < bestDelta) { bestDelta = d; best = ts; }
+    }
+    if (best) {
+      // selectFrame seeks video to best's seconds, sets cursor/label, drops follow.
+      selectFrame(best);
+    } else if (followLatest) {
+      // No processed frames yet — still drop follow since user is driving.
+      setFollow(false);
+    }
+    // Override video to the literal stride target (may differ from best when
+    // some frames in the strided position haven't been processed yet).
+    if (videoEl && videoEl.style.display !== "none" && !isNaN(videoEl.duration)) {
+      try { videoEl.currentTime = targetSec; } catch (_) {}
+    }
   }
 
   els.framePrev.addEventListener("click", () => stepFrame(-1));
