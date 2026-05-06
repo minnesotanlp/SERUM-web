@@ -48,6 +48,7 @@
     framePosition: $("live-frame-position"),
     frameLabel: $("live-frame-label"),
     pairSelector: $("live-pair-selector"),
+    displayToggle: $("live-display-toggle"),
     followToggle: $("live-follow-toggle"),
     followToggleLabel: $("live-follow-toggle-label"),
     fsmSvg: $("live-fsm-svg"),
@@ -72,11 +73,17 @@
   // We keep state for ALL pairs (1..6); the user can switch which one they're
   // viewing. `viewedPair` is the active view; `latestPair` tracks where the
   // pipeline currently is, used by the "follow latest" toggle.
-  let allPairFrameStates = new Map(); // pair → Map<ts, {activity, intent, label?}>
+  let allPairFrameStates = new Map(); // pair → Map<ts, {activity, intent, activityLabel?, intentLabel?}>
   let viewedPair = 0;
   let latestPair = 0;
   let pairFrameStates = new Map(); // alias = allPairFrameStates.get(viewedPair)
   let followLatest = true;         // auto-jump to newest pair as it arrives
+  let displayType = "intent";      // "activity" | "intent" — drives label, FSM, tooltip
+  // Pick the right label out of a frame-state record per the current toggle.
+  function pickLabel(st) {
+    if (!st) return "";
+    return displayType === "activity" ? (st.activityLabel || "") : (st.intentLabel || "");
+  }
   let barElByTs = new Map();       // ts → DOM bar element (for the viewed pair)
   let videoEl = null;       // <video> element if mp4 playback is available
   let fallbackImg = null;   // <img> shown when no mp4 (e.g. EPIC-KITCHENS)
@@ -568,9 +575,13 @@
         st = { activity: false, intent: false };
         pairMap.set(ts, st);
       }
-      if (isActivityPass(s.pass)) st.activity = true;
-      else st.intent = true;
-      st.label = s.state || st.label || "";
+      if (isActivityPass(s.pass)) {
+        st.activity = true;
+        st.activityLabel = s.state || st.activityLabel || "";
+      } else {
+        st.intent = true;
+        st.intentLabel = s.state || st.intentLabel || "";
+      }
     }
     if (sawAnyPair < 1) return;
     latestPair = Math.max(latestPair, sawAnyPair);
@@ -678,6 +689,40 @@
     els.followToggle.addEventListener("click", () => setFollow(!followLatest));
   }
 
+  // ─── activity / intent display toggle ────────────────────────────
+  function renderDisplayToggle() {
+    if (!els.displayToggle) return;
+    const types = [
+      { key: "activity", label: "Activity" },
+      { key: "intent",   label: "Intent" },
+    ];
+    els.displayToggle.innerHTML = types.map(({ key, label }) => {
+      const active = key === displayType;
+      const cls = active
+        ? "px-2 py-0.5 rounded text-xs font-medium bg-indigo-600 text-white"
+        : "px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer";
+      return `<button type="button" data-display="${key}" class="${cls}">${label}</button>`;
+    }).join("");
+    for (const btn of els.displayToggle.querySelectorAll("button[data-display]")) {
+      btn.addEventListener("click", () => setDisplayType(btn.dataset.display));
+    }
+  }
+
+  function setDisplayType(t) {
+    if (t !== "activity" && t !== "intent") return;
+    if (t === displayType) return;
+    displayType = t;
+    renderDisplayToggle();
+    // Re-render anything that reads labels. Don't move the cursor (false), the
+    // user is just changing what's *shown* for the same frame.
+    renderBarsForViewedPair(/*advanceSelection*/ false);
+    renderSelected();
+    updateFSMForViewedPair();
+  }
+
+  // Render once on load so the toggle isn't blank before the first job submit.
+  renderDisplayToggle();
+
   // Internal version of selectFrame that doesn't toggle follow off (used when
   // follow itself is moving the cursor).
   function selectFrameQuiet(ts) {
@@ -781,7 +826,7 @@
     // Order frames by video time. Each frame contributes its newest label
     // (intent overrides activity once intent has fired for that frame).
     const frames = Array.from(pairMap.entries())
-      .map(([ts, st]) => ({ ts, sec: frameTsToSeconds(ts), label: st.label }))
+      .map(([ts, st]) => ({ ts, sec: frameTsToSeconds(ts), label: pickLabel(st) }))
       .filter((f) => f.label)
       .sort((a, b) => a.sec - b.sec);
     if (!frames.length) return null;
@@ -948,7 +993,7 @@
   function updateFSMForViewedPair() {
     const graph = buildGraphForPair(viewedPair);
     const currentLabel = (selectedTs && pairFrameStates.get(selectedTs)) ?
-      pairFrameStates.get(selectedTs).label : null;
+      pickLabel(pairFrameStates.get(selectedTs)) : null;
     renderFSM(graph, currentLabel);
   }
 
@@ -1006,7 +1051,7 @@
     els.framePosition.textContent =
       `frame ${idx >= 0 ? idx + 1 : "?"} / ${order.length} · ${fmtMMSS(frameTsToSeconds(selectedTs))}`;
     const st = pairFrameStates.get(selectedTs);
-    els.frameLabel.textContent = (st && st.label) || "";
+    els.frameLabel.textContent = pickLabel(st);
 
     // Keep the fallback image in sync if it's the active player.
     if (fallbackImg && fallbackImg.style.display === "block") {
