@@ -320,8 +320,13 @@
         </a>
       </div>
       <p class="mt-4 text-xs text-slate-500">
-        If the first link is offline, try the mirror. Some ISPs may block ngrok; visit the HTTP version once to
-        accept the certificate before the HTTPS link will load reliably.
+        Dashboard links use ngrok tunnels and may go offline when the server is not running.
+        If both links are unavailable, the demo server may be temporarily down.
+        Some ISPs may block ngrok; visit the HTTP version once to accept the certificate before the HTTPS link will load reliably.
+      </p>
+      <p class="mt-2 text-xs text-amber-600 font-medium">
+        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+        To host a permanent dashboard, replace the ngrok URLs above with a stable deployment URL (e.g. GitHub Pages, Vercel, or your institution's server).
       </p>
     </div>
   </section>
