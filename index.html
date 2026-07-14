@@ -110,10 +110,61 @@
     pre { overflow-x: auto; }
 
     /* Anchor offset below the sticky nav */
-    section[id] { scroll-margin-top: 84px; }
+    section[id], [id].anchor { scroll-margin-top: 84px; }
+
+    /* ===== Fixed left section nav (meta-harness style) ===== */
+    .section-nav {
+      position: fixed; left: 0.75rem; top: 50%; transform: translateY(-50%);
+      width: 140px; font-size: 12px; line-height: 1.4; z-index: 40;
+      opacity: 0; pointer-events: none; transition: opacity .3s;
+    }
+    .section-nav.visible { opacity: 1; pointer-events: auto; }
+    .section-nav a {
+      display: block; padding: 3px 9px; color: #94a3b8; text-decoration: none;
+      border-left: 2px solid transparent; transition: color .2s, border-color .2s;
+    }
+    .section-nav a.nested { padding-left: 20px; font-size: 11px; }
+    .section-nav a:hover { color: #1e293b; }
+    .section-nav a.active { color: #1e293b; border-left-color: var(--intent); font-weight: 600; }
+    @media (max-width: 1200px) { .section-nav { display: none; } }
+
+    /* ===== Margin hover panels (meta-harness style) ===== */
+    .margin-host { position: relative; }
+    .margin-note {
+      position: absolute; left: 100%; top: 0; margin-left: 2rem; width: 300px;
+      font-size: 13px; line-height: 1.55; color: #475569;
+      opacity: 0; transition: opacity .2s; pointer-events: none;
+    }
+    .margin-note.side-left { left: auto; right: 100%; margin-left: 0; margin-right: 2rem; }
+    .margin-note.show { opacity: 1; }
+    .margin-note img { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
+    .margin-note .mn-caption { margin-top: 8px; font-size: 12px; color: #64748b; }
+    .margin-note strong { color: #1e293b; }
+    tr[data-desc], [data-viz] { cursor: default; }
+    @media (max-width: 1399px) { .margin-note { display: none; } }
   </style>
 </head>
 <body class="text-slate-800 bg-white">
+
+  <div class="text-center text-xs text-slate-400 py-1.5 border-b border-slate-100">
+    Best viewed on a desktop browser — hover interactions and margin figures need a wide screen.
+  </div>
+
+  <!-- Fixed left section nav (appears after scrolling past the hero) -->
+  <nav class="section-nav" id="section-nav" aria-label="Sections">
+    <a href="#overview">Overview</a>
+    <a href="#action">In action</a>
+    <a href="#findings">Key findings</a>
+    <a href="#method">Method</a>
+    <a href="#live">Live demo</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#results">Results</a>
+    <a href="#prediction" class="nested">Prediction</a>
+    <a href="#domains" class="nested">By domain</a>
+    <a href="#equilibrium" class="nested">Equilibrium</a>
+    <a href="#human" class="nested">Human eval</a>
+    <a href="#bibtex">BibTeX</a>
+  </nav>
 
   <!-- NAV -->
   <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200">
@@ -221,7 +272,7 @@
         <span class="accent-action">without a predefined ontology</span> and
         <span class="accent-intent">without manual annotation</span>?”
       </p>
-      <p class="mt-7 max-w-prose mx-auto text-[17px] text-slate-700 leading-relaxed">
+      <p class="mt-7 text-[17px] text-slate-700 leading-relaxed">
         Proactive AI assistants need structured models of user behavior — compact representations of how people
         move through goal-directed activity over time. Egocentric video is abundant, but converting it into models
         that downstream applications can reason over is hard: single-pass VLM annotation hallucinates and suffers from
@@ -253,12 +304,36 @@
     </div>
   </section>
 
+  <!-- SERUM IN ACTION -->
+  <section id="action" class="max-w-5xl mx-auto px-6 pt-14">
+    <p class="eyebrow">SERUM in action</p>
+    <h2 class="section-h text-3xl font-bold mt-2 mb-3 text-slate-900">Watch user models get built</h2>
+    <p class="text-slate-600 mb-6 max-w-3xl leading-relaxed">
+      User-model graphs constructed live, in sync with the source video — an office day, a bike commute, and a web-development session.
+    </p>
+    <div class="space-y-5">
+      <video src="assets/videos/1.mp4" controls autoplay loop muted playsinline preload="metadata"
+             aria-label="SERUM building a user model graph in sync with an office video"
+             class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
+      <div class="grid md:grid-cols-2 gap-5">
+        <video src="assets/videos/2.mp4" controls autoplay loop muted playsinline preload="metadata"
+               aria-label="SERUM annotating a cycling video"
+               class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
+        <video src="assets/videos/3.mp4" controls autoplay loop muted playsinline preload="metadata"
+               aria-label="SERUM annotating a web development session"
+               class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
+      </div>
+    </div>
+  </section>
+
   <!-- KEY FINDINGS -->
-  <section class="max-w-5xl mx-auto px-6 py-16">
+  <section id="findings" class="max-w-3xl mx-auto px-6 py-16">
     <p class="eyebrow">TL;DR</p>
     <h2 class="section-h text-3xl font-bold mt-2 mb-8 text-slate-900">Four key findings</h2>
-    <div class="grid md:grid-cols-2 gap-5">
-      <div class="card">
+    <p class="text-xs text-slate-500 mb-4 hidden min-[1400px]:block"><i class="fa-regular fa-hand-pointer"></i> Hover a card to see the supporting figure in the margin.</p>
+    <div class="margin-host">
+    <div class="grid md:grid-cols-2 gap-5" id="findings-cards">
+      <div class="card" data-viz="assets/figures/convergence.png" data-viz-caption="Per-video vocabulary across 30 passes (left: activities, right: intents) — every curve flattens by pass 8.">
         <div class="text-sm font-bold text-slate-500 mono">01 · Convergence</div>
         <h3 class="mt-2 text-lg font-bold text-slate-900">Schematic equilibrium</h3>
         <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
@@ -266,7 +341,7 @@
           into a consistent taxonomy by <strong>pass 8</strong>, a phenomenon we term <em>schematic equilibrium</em>.
         </p>
       </div>
-      <div class="card">
+      <div class="card" data-viz="assets/figures/um_activity.png" data-viz-caption="An action-level user model extracted from a single lab-work video — transition probabilities support next-action prediction.">
         <div class="text-sm font-bold text-slate-500 mono">02 · Prediction</div>
         <h3 class="mt-2 text-lg font-bold text-slate-900">User models that predict behavior</h3>
         <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
@@ -275,7 +350,7 @@
           largest gains on structured tasks like coding (<strong>76.4%</strong>).
         </p>
       </div>
-      <div class="card">
+      <div class="card" data-viz="assets/figures/threshold.png" data-viz-caption="Cosine-distance distributions for synonymous (blue) vs. distinct (red) label pairs. The calibrated threshold t*=0.43 (dashed) reaches F1 0.82.">
         <div class="text-sm font-bold text-slate-500 mono">03 · Normalization</div>
         <h3 class="mt-2 text-lg font-bold text-slate-900">Open vocabulary, then merge</h3>
         <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
@@ -284,7 +359,7 @@
           by <strong>14.9</strong> points.
         </p>
       </div>
-      <div class="card">
+      <div class="card" data-viz="assets/figures/inaccuracy.png" data-viz-caption="Where the remaining errors come from: the VLM caused 62% of inaccuracies (blue); annotator mislabeling accounted for 38% (orange).">
         <div class="text-sm font-bold text-slate-500 mono">04 · Human judgment</div>
         <h3 class="mt-2 text-lg font-bold text-slate-900">Labels people recognize</h3>
         <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
@@ -293,6 +368,8 @@
           recognizable improvements.
         </p>
       </div>
+    </div>
+    <aside class="margin-note" id="findings-note" aria-hidden="true"></aside>
     </div>
   </section>
 
@@ -331,7 +408,7 @@
           </p>
         </div>
       </div>
-      <p class="mt-5 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+      <p class="mt-5 max-w-3xl text-[15px] text-slate-600 leading-relaxed">
         The two levels are <strong>mutually informative</strong>: action evidence anchors intent inference, and intent
         context disambiguates ambiguous actions — “looking at a phone” becomes “checking map directions” once intent
         context establishes “navigating to a destination.” This bidirectionality is why SERUM <em>alternates</em>
@@ -388,7 +465,7 @@
 
       <!-- Refinement example -->
       <h3 class="mt-14 text-2xl font-bold text-slate-900">What refinement buys: pass 1 → pass 11</h3>
-      <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+      <p class="mt-3 max-w-3xl text-[15px] text-slate-600 leading-relaxed">
         On a real coding video, pass 1 produces generic states like <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">typing on keyboard</span>
         and <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">unclear</span>. By pass 11, task-specific states emerge:
         <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">dockerizing python lambda</span>,
@@ -410,7 +487,7 @@
 
       <!-- Example user models -->
       <h3 class="mt-14 text-2xl font-bold text-slate-900">Example User Models</h3>
-      <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+      <p class="mt-3 max-w-3xl text-[15px] text-slate-600 leading-relaxed">
         From a single lab-work video, SERUM produces two complementary views of behavior:
       </p>
       <div class="mt-6 grid md:grid-cols-5 gap-5 items-center">
@@ -431,7 +508,7 @@
     <div class="max-w-5xl mx-auto px-6 py-16">
       <p class="eyebrow">Interactive</p>
       <h2 class="section-h text-3xl font-bold mt-2 mb-3 text-slate-900">SERUM live: run it on any video</h2>
-      <p class="text-slate-600 mb-8 max-w-prose leading-relaxed">
+      <p class="text-slate-600 mb-8 max-w-3xl leading-relaxed">
         Watch SERUM work in real time on a video of your choice. Pick a pre-loaded video or paste a YouTube URL,
         and stream pass-by-pass labels as the model produces them. To keep latency reasonable, the post-hoc analysis
         stages (normalization, Markov modeling, chart generation) are skipped here — those live in the
@@ -570,7 +647,7 @@
     <div class="max-w-5xl mx-auto px-6 py-16">
       <p class="eyebrow">Explore</p>
       <h2 class="section-h text-3xl font-bold mt-2 mb-3 text-slate-900">Dashboard: full pipeline output on 400+ videos</h2>
-      <p class="text-slate-600 mb-6 max-w-prose leading-relaxed">
+      <p class="text-slate-600 mb-6 max-w-3xl leading-relaxed">
         The dashboard exposes the complete pipeline output — per-pass refinement chains, user-model graphs synchronized
         to the video, normalized Markov transition matrices, and confidence / perplexity diagnostics — across 400+ videos.
       </p>
@@ -587,41 +664,28 @@
         accept the certificate before the HTTPS link will load reliably.
       </p>
 
-      <h3 class="text-xl font-bold text-slate-900 mb-4">SERUM in action</h3>
-      <p class="text-sm text-slate-500 mb-5">User-model graphs being constructed live, in sync with the source video.</p>
-      <div class="space-y-5">
-        <video src="assets/videos/1.mp4" controls autoplay loop muted playsinline preload="metadata"
-               aria-label="SERUM building a user model graph in sync with an office video"
-               class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
-        <div class="grid md:grid-cols-2 gap-5">
-          <video src="assets/videos/2.mp4" controls autoplay loop muted playsinline preload="metadata"
-                 aria-label="SERUM annotating a cycling video"
-                 class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
-          <video src="assets/videos/3.mp4" controls autoplay loop muted playsinline preload="metadata"
-                 aria-label="SERUM annotating a web development session"
-                 class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
-        </div>
-        <video src="assets/videos/4.mp4" controls autoplay loop muted playsinline preload="metadata"
-               aria-label="SERUM state transitions across a daily-life video"
-               class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
-      </div>
+      <video src="assets/videos/4.mp4" controls autoplay loop muted playsinline preload="metadata"
+             aria-label="SERUM state transitions across a daily-life video"
+             class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
+      <p class="text-xs text-slate-500 mt-3">State transitions unfolding across a daily-life video in the dashboard.</p>
     </div>
   </section>
 
   <!-- RESULTS -->
-  <section id="results" class="max-w-5xl mx-auto px-6 py-16">
+  <section id="results" class="max-w-3xl mx-auto px-6 py-16">
     <p class="eyebrow">Evaluation</p>
     <h2 class="section-h text-3xl font-bold mt-2 mb-8 text-slate-900">Results</h2>
 
     <!-- RQ2: prediction -->
-    <h3 class="text-2xl font-bold text-slate-900">Next-state prediction</h3>
-    <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+    <h3 id="prediction" class="anchor text-2xl font-bold text-slate-900">Next-state prediction</h3>
+    <p class="mt-3 max-w-3xl text-[15px] text-slate-600 leading-relaxed">
       User models are trained on the first 60% of each video and predict the held-out 40%.
       Normalized Markov models (<span class="mono">Markov<sup>n</sup></span>) win on both accuracy and
       perplexity, for both actions and intents:
     </p>
+    <div class="margin-host">
     <div class="mt-6 overflow-x-auto rounded-xl border border-slate-200">
-      <table class="results">
+      <table class="results" id="prediction-table">
         <thead>
           <tr>
             <th>Model</th>
@@ -632,42 +696,42 @@
           </tr>
         </thead>
         <tbody>
-          <tr class="winner">
+          <tr class="winner" data-desc="First-order Markov chain over <strong>normalized</strong> label sequences with add-one Laplace smoothing — predicts the next state from the current one. Normalization merges surface synonyms, densifying the transition matrix; that is the single biggest win.">
             <td>Markov<sup>n</sup> (ours)</td>
             <td>48.5 <span class="std">±30.9</span></td>
             <td>10.9 <span class="std">±11.0</span></td>
             <td>58.2 <span class="std">±30.3</span></td>
             <td>8.2 <span class="std">±9.7</span></td>
           </tr>
-          <tr>
+          <tr data-desc="Always predicts the most frequent training state (on normalized labels). Strong when one activity dominates a video, but blind to context — it benefits less from normalization because it only tracks label frequencies, not transitions.">
             <td>Majority<sup>n</sup></td>
             <td>46.5 <span class="std">±32.6</span></td>
             <td>14.4 <span class="std">±15.8</span></td>
             <td>53.4 <span class="std">±33.8</span></td>
             <td>11.0 <span class="std">±14.7</span></td>
           </tr>
-          <tr>
+          <tr data-desc="The same Markov model built on <strong>raw</strong> labels. Surface synonyms (“rinsing produce” vs. “cleaning vegetables”) fragment the vocabulary and starve the transition counts — accuracy drops 11 points and perplexity doubles.">
             <td>Markov (raw labels)</td>
             <td>37.5 <span class="std">±33.3</span></td>
             <td>23.9 <span class="std">±25.6</span></td>
             <td>33.3 <span class="std">±26.9</span></td>
             <td>24.6 <span class="std">±21.5</span></td>
           </tr>
-          <tr>
+          <tr data-desc="Most-frequent-state baseline on raw labels — what you get with no transition structure and no normalization.">
             <td>Majority (raw labels)</td>
             <td>37.6 <span class="std">±34.0</span></td>
             <td>29.8 <span class="std">±32.0</span></td>
             <td>29.9 <span class="std">±28.1</span></td>
             <td>31.8 <span class="std">±35.5</span></td>
           </tr>
-          <tr>
+          <tr data-desc="Samples the next state in proportion to its marginal frequency in training — a chance baseline that respects the label distribution but ignores sequence.">
             <td>Weighted Random</td>
             <td>25.9 <span class="std">±29.5</span></td>
             <td>29.8 <span class="std">±32.0</span></td>
             <td>17.9 <span class="std">±20.4</span></td>
             <td>31.8 <span class="std">±35.5</span></td>
           </tr>
-          <tr>
+          <tr data-desc="Samples uniformly over all observed states — the floor. The gap between Uniform and Markov<sup>n</sup> is the total predictive signal SERUM extracts.">
             <td>Uniform</td>
             <td>9.2 <span class="std">±10.5</span></td>
             <td>30.8 <span class="std">±29.0</span></td>
@@ -680,17 +744,21 @@
     <p class="mt-3 text-xs text-slate-500">
       Mean top-1 accuracy and perplexity at the final pass across 61 videos. <sup>n</sup> = label normalization applied
       before model construction. Top-3 and Top-5 show similar tendencies, favoring Markov even more strongly.
+      <span class="hidden min-[1400px]:inline">Hover a row for details.</span>
     </p>
+    <aside class="margin-note" id="prediction-note" aria-hidden="true"></aside>
+    </div>
 
     <!-- Domain breakdown -->
-    <h3 class="mt-14 text-2xl font-bold text-slate-900">Gains by domain</h3>
-    <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+    <h3 id="domains" class="anchor mt-14 text-2xl font-bold text-slate-900">Gains by domain</h3>
+    <p class="mt-3 max-w-3xl text-[15px] text-slate-600 leading-relaxed">
       Structured workflows benefit most: coding reaches <strong>76%</strong> top-1 for both actions and intents,
       reflecting the rich, repetitive transition structure of software work. Normalization lifts every domain
       (raw → normalized):
     </p>
+    <div class="margin-host">
     <div class="mt-6 overflow-x-auto rounded-xl border border-slate-200">
-      <table class="results">
+      <table class="results" id="domains-table">
         <thead>
           <tr>
             <th>Domain</th>
@@ -700,27 +768,27 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
+          <tr data-desc="<strong>Coding</strong> — screen recordings of software work. Repetitive edit–run–debug loops with a singular goal give the richest transition structure: highest accuracy at both levels, and activity perplexity of just 3.1.">
             <td>Coding</td><td>19</td>
             <td>73.9 → <strong>76.4</strong></td>
             <td>47.5 → <strong>76.1</strong></td>
           </tr>
-          <tr>
+          <tr data-desc="<strong>Cooking</strong> — many fine-grained one-off actions inflate the vocabulary (66 ± 29 activity states, the largest of any domain). Normalization more than doubles activity accuracy and intent accuracy.">
             <td>Cooking</td><td>15</td>
             <td>13.6 → <strong>31.8</strong></td>
             <td>21.8 → <strong>53.8</strong></td>
           </tr>
-          <tr>
+          <tr data-desc="<strong>Physical &amp; outdoor</strong> — construction, repair, exercise. Cyclical routines make intents especially predictable after normalization (71.6%).">
             <td>Physical</td><td>12</td>
             <td>25.7 → <strong>44.2</strong></td>
             <td>40.1 → <strong>71.6</strong></td>
           </tr>
-          <tr>
+          <tr data-desc="<strong>Daily life</strong> — heterogeneous, loosely goal-directed vlogs. The hardest domain: activity progresses linearly without revisiting earlier states, which the split-half protocol penalizes.">
             <td>Daily Life</td><td>15</td>
             <td>24.7 → <strong>33.5</strong></td>
             <td>21.5 → <strong>30.3</strong></td>
           </tr>
-          <tr class="winner">
+          <tr class="winner" data-desc="<strong>Overall</strong> — normalization lifts every domain: +11 points on actions and +25 points on intents on average.">
             <td>Overall</td><td>61</td>
             <td>37.5 → <strong>48.5</strong></td>
             <td>33.3 → <strong>58.2</strong></td>
@@ -730,11 +798,14 @@
     </div>
     <p class="mt-3 text-xs text-slate-500">
       Markov top-1 accuracy by domain at the final pass; arrows show the effect of label normalization.
+      <span class="hidden min-[1400px]:inline">Hover a row for details.</span>
     </p>
+    <aside class="margin-note side-left" id="domains-note" aria-hidden="true"></aside>
+    </div>
 
     <!-- RQ1: convergence -->
-    <h3 class="mt-14 text-2xl font-bold text-slate-900">Schematic equilibrium</h3>
-    <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+    <h3 id="equilibrium" class="anchor mt-14 text-2xl font-bold text-slate-900">Schematic equilibrium</h3>
+    <p class="mt-3 max-w-3xl text-[15px] text-slate-600 leading-relaxed">
       Does iterative re-annotation drift forever? No. In a 30-pass pilot on 13 videos, raw activity vocabulary
       falls from ~28 to ~18 unique states by pass 8 (intents: ~54 → ~24), then stays flat for the next 22 passes.
       Every video individually stabilizes by pass 8 — free-form VLM labels settle into a consistent schema instead
@@ -750,8 +821,8 @@
     </figure>
 
     <!-- RQ3: human -->
-    <h3 class="mt-14 text-2xl font-bold text-slate-900">Human assessment</h3>
-    <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+    <h3 id="human" class="anchor mt-14 text-2xl font-bold text-slate-900">Human assessment</h3>
+    <p class="mt-3 max-w-3xl text-[15px] text-slate-600 leading-relaxed">
       Five annotators with domain expertise in human workflow research judged 180 sampled frames against the
       source videos; in a separate ablation study, three annotators judged 30 blinded A/B pairs:
     </p>
@@ -769,7 +840,7 @@
         <p class="mt-2 text-sm text-slate-600 leading-snug"><strong>prefer the full pipeline</strong> over an activity-only ablation — 3 annotators, 30 blinded A/B pairs <span class="text-slate-500">(α = 0.73)</span></p>
       </div>
     </div>
-    <p class="mt-5 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+    <p class="mt-5 max-w-3xl text-[15px] text-slate-600 leading-relaxed">
       The ablation is telling: without intent passes, activity labels collapse to uninformative dominant states —
       <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">typing_on_keyboard</span> for 92–96% of coding
       frames — where the intent-informed pipeline distinguishes
@@ -833,6 +904,59 @@
         v.pause();
       });
     }
+
+    // Left section nav: show after scrolling past the hero, highlight the section in view
+    (function () {
+      const nav = document.getElementById("section-nav");
+      if (!nav) return;
+      const ids = ["overview", "action", "findings", "method", "live", "dashboard",
+                   "results", "prediction", "domains", "equilibrium", "human", "bibtex"];
+      const spy = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          nav.querySelectorAll("a").forEach((a) => {
+            a.classList.toggle("active", a.getAttribute("href") === "#" + entry.target.id);
+          });
+        });
+      }, { rootMargin: "-15% 0px -75% 0px" });
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) spy.observe(el);
+      });
+      new IntersectionObserver((entries) => {
+        nav.classList.toggle("visible", !entries[0].isIntersecting);
+      }).observe(document.getElementById("top"));
+    })();
+
+    // Margin hover panels: table rows (data-desc) and finding cards (data-viz)
+    (function () {
+      function bindRows(tableId, noteId) {
+        const note = document.getElementById(noteId);
+        if (!note) return;
+        document.querySelectorAll("#" + tableId + " tbody tr[data-desc]").forEach((tr) => {
+          tr.addEventListener("mouseenter", () => {
+            note.innerHTML = tr.dataset.desc;
+            note.classList.add("show");
+          });
+          tr.addEventListener("mouseleave", () => note.classList.remove("show"));
+        });
+      }
+      bindRows("prediction-table", "prediction-note");
+      bindRows("domains-table", "domains-note");
+
+      const findingsNote = document.getElementById("findings-note");
+      if (findingsNote) {
+        document.querySelectorAll("#findings-cards [data-viz]").forEach((card) => {
+          card.addEventListener("mouseenter", () => {
+            findingsNote.innerHTML =
+              '<img src="' + card.dataset.viz + '" alt="" loading="lazy" />' +
+              '<div class="mn-caption">' + card.dataset.vizCaption + "</div>";
+            findingsNote.classList.add("show");
+          });
+          card.addEventListener("mouseleave", () => findingsNote.classList.remove("show"));
+        });
+      }
+    })();
   </script>
 </body>
 </html>
