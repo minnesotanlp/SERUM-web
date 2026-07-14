@@ -4,187 +4,449 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SERUM: State Extraction and Refinement for User Modeling | Minnesota NLP</title>
-  <meta name="description" content="SERUM introduces multi-layered prompting into VLM annotation. We ask a VLM, in alternating shared context passes, what is happening in a frame, and why it is happening. SERUM produces a more coherent, and thoughtful assessment of the provided video. A Minnesota NLP Lab project at the University of Minnesota." />
+  <meta name="description" content="SERUM extracts finite-state behavioral models of user actions and intents directly from unstructured egocentric video via multi-pass VLM annotation — no logs, no predefined taxonomies, no manual annotation. Accepted to COLM 2026. Minnesota NLP Lab, University of Minnesota." />
   <meta name="author" content="Andy J. Phu, James Mooney, Karin de Langis, Khanh Chi Le, Dongyeop Kang" />
-  <meta name="keywords" content="SERUM, user modeling, egocentric video, VLM, vision-language model, Markov, behavioral modeling, Minnesota NLP, CoLM 2026" />
+  <meta name="keywords" content="SERUM, user modeling, egocentric video, VLM, vision-language model, Markov, behavioral modeling, schematic equilibrium, Minnesota NLP, COLM 2026" />
 
   <link rel="icon" type="image/png" href="assets/favicon.png" />
   <link rel="apple-touch-icon" href="assets/favicon.png" />
 
   <meta property="og:type" content="website" />
   <meta property="og:title" content="SERUM: State Extraction and Refinement for User Modeling" />
-  <meta property="og:description" content="A multi-pass VLM framework for extracting finite-state behavioral models from unstructured egocentric video. Minnesota NLP Lab, University of Minnesota." />
-  <meta property="og:image" content="assets/favicon.png" />
+  <meta property="og:description" content="Multi-pass VLM annotation that turns raw egocentric video into finite-state models of user actions and intents. Accepted to COLM 2026." />
+  <meta property="og:image" content="https://minnesotanlp.github.io/SERUM-web/assets/figures/fig1_teaser.jpg" />
+  <meta property="og:url" content="https://minnesotanlp.github.io/SERUM-web/" />
   <meta property="og:site_name" content="Minnesota NLP" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@MinnesotaNLP" />
   <meta name="twitter:title" content="SERUM: State Extraction and Refinement for User Modeling" />
-  <meta name="twitter:description" content="Multi-pass VLM framework for extracting behavioral models from egocentric video. Minnesota NLP Lab." />
-  <meta name="twitter:image" content="assets/favicon.png" />
+  <meta name="twitter:description" content="Multi-pass VLM annotation that turns raw egocentric video into finite-state models of user actions and intents. Accepted to COLM 2026." />
+  <meta name="twitter:image" content="https://minnesotanlp.github.io/SERUM-web/assets/figures/fig1_teaser.jpg" />
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/tailwind.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css" />
 
   <style>
-    html { scroll-behavior: smooth; }
+    :root {
+      --action: #c2521e;   /* orange used for Actions throughout the paper   */
+      --intent: #2e6da8;   /* blue used for Intents throughout the paper     */
+      --ink: #1e293b;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      html { scroll-behavior: smooth; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .btn:hover, .card:hover { transform: none; }
+    }
     body { font-family: 'Inter', system-ui, sans-serif; }
-    code, pre { font-family: 'JetBrains Mono', monospace; }
-    .hero-bg {
-      background:
-        radial-gradient(circle at 20% 10%, rgba(99,102,241,0.15), transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(14,165,233,0.15), transparent 55%),
-        radial-gradient(circle at 50% 80%, rgba(168,85,247,0.12), transparent 55%),
-        linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .accent-action { color: var(--action); }
+    .accent-intent { color: var(--intent); }
+
+    /* Section heading with a two-tone tick (action + intent) */
+    .section-h { display: flex; align-items: baseline; gap: 12px; }
+    .section-h::before {
+      content: "";
+      align-self: stretch;
+      width: 4px; border-radius: 2px; flex: none;
+      background: linear-gradient(180deg, var(--action) 0 50%, var(--intent) 50% 100%);
     }
-    .section-h {
-      position: relative;
-      padding-left: 14px;
-      border-left: 4px solid #4f46e5;
+    .eyebrow {
+      font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: #64748b;
     }
-    .pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border-radius: 9999px;
-      font-size: 12px; font-weight: 600;
-      background: #eef2ff; color: #4338ca;
-    }
+
     .btn {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 10px 18px; border-radius: 10px;
       font-weight: 600; font-size: 14px;
       transition: transform .15s ease, box-shadow .15s ease;
     }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.15); }
-    .btn-dark { background: #0f172a; color: white; }
-    .btn-light { background: white; color: #0f172a; border: 1px solid #e2e8f0; }
-    .btn-accent { background: #4f46e5; color: white; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(15,23,42,.12); }
+    .btn-dark   { background: #0f172a; color: white; }
+    .btn-light  { background: white; color: #0f172a; border: 1px solid #cbd5e1; }
+    .btn-accent { background: var(--intent); color: white; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 9999px;
+      font-size: 12px; font-weight: 600;
+      background: #eef2ff; color: #4338ca;
+    }
     .card {
       background: white; border: 1px solid #e2e8f0;
       border-radius: 14px; padding: 22px;
       transition: border-color .15s ease, transform .15s ease;
     }
-    .card:hover { border-color: #c7d2fe; transform: translateY(-2px); }
-    .stage-num {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 32px; height: 32px; border-radius: 9999px;
-      background: #4f46e5; color: white; font-weight: 700;
-      font-size: 14px;
+    .card:hover { border-color: #bfd3e6; transform: translateY(-2px); }
+
+    figure.paperfig img {
+      width: 100%; border-radius: 12px;
+      border: 1px solid #e2e8f0; background: white;
     }
-    details > summary { list-style: none; cursor: pointer; }
-    details > summary::-webkit-details-marker { display: none; }
+    figure.paperfig figcaption {
+      margin-top: 10px; font-size: 13px; line-height: 1.55; color: #64748b;
+    }
+    figure.paperfig figcaption strong { color: #475569; }
+
+    /* Results tables */
+    table.results { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table.results th, table.results td { padding: 8px 12px; text-align: right; white-space: nowrap; }
+    table.results th:first-child, table.results td:first-child { text-align: left; }
+    table.results thead th {
+      font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+      color: #64748b; border-bottom: 2px solid #cbd5e1; font-weight: 700;
+    }
+    table.results tbody tr { border-bottom: 1px solid #e2e8f0; }
+    table.results tbody tr:last-child { border-bottom: none; }
+    table.results tr.winner { background: #eff6ff; font-weight: 700; color: #1e3a8a; }
+    table.results td .std { font-size: 11px; color: #475569; font-weight: 400; }
+
     pre { overflow-x: auto; }
+
+    /* Anchor offset below the sticky nav */
+    section[id] { scroll-margin-top: 84px; }
   </style>
 </head>
 <body class="text-slate-800 bg-white">
 
-  <!-- HERO -->
-  <section class="hero-bg text-white">
-    <div class="max-w-6xl mx-auto px-6 pt-16 pb-20">
-      <h1 class="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight">
-        SERUM
-      </h1>
-      <h3> Accepted into COLM 2026</h3>
-      <h2 class="mt-3 text-lg md:text-2xl font-medium text-slate-200 max-w-3xl">
-        State Extraction and Refinement for User Modeling
-      </h2>
-
-      <div class="mt-10">
-        <div class="flex flex-wrap justify-start gap-6">
-          <a href="https://andyphu.com" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
-            <img src="assets/authors/andy.jpg" alt="Andy J. Phu" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
-            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">Andy J. Phu</span>
-          </a>
-          <a href="https://jimtmooney.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
-            <img src="assets/authors/james.jpeg" alt="James Mooney" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
-            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">James Mooney</span>
-          </a>
-          <a href="https://karinjd.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
-            <img src="assets/authors/karin.png" alt="Karin de Langis" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
-            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">Karin de Langis</span>
-          </a>
-          <a href="https://chile2706.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
-            <img src="assets/authors/chi.jpg" alt="Khanh Chi Le" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
-            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">Khanh Chi Le</span>
-          </a>
-          <a href="https://dykang.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center text-center group">
-            <img src="assets/authors/dongyeop.jpg" alt="Dongyeop Kang" class="w-20 h-20 rounded-full object-cover border-2 border-white/30 group-hover:border-white transition" />
-            <span class="mt-2 text-sm text-slate-100 group-hover:text-white">Dongyeop Kang</span>
-          </a>
-        </div>
-        <div class="mt-5 text-xs md:text-sm text-slate-400">
-          <a href="https://minnesotanlp.github.io/" target="_blank" rel="noopener" class="hover:text-slate-200">Minnesota NLP Lab</a>,
-          <a href="https://twin-cities.umn.edu/" target="_blank" rel="noopener" class="hover:text-slate-200">University of Minnesota</a>
-        </div>
+  <!-- NAV -->
+  <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="#top" class="font-extrabold tracking-tight text-slate-900">
+        <span class="accent-action">SER</span><span class="accent-intent">UM</span>
+      </a>
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+        <a href="#overview" class="hover:text-slate-900">Overview</a>
+        <a href="#method" class="hover:text-slate-900">Method</a>
+        <a href="#live" class="hover:text-slate-900">Live Demo</a>
+        <a href="#results" class="hover:text-slate-900">Results</a>
+        <a href="#bibtex" class="hover:text-slate-900">BibTeX</a>
       </div>
+      <div class="flex items-center gap-2">
+        <a href="assets/serum_colm2026.pdf" class="btn btn-light !py-1.5 !px-3 text-xs"><i class="fa-solid fa-file-pdf"></i> Paper</a>
+        <a href="https://github.com/minnesotanlp/serum" target="_blank" rel="noopener" class="btn btn-dark !py-1.5 !px-3 text-xs"><i class="fa-brands fa-github"></i> Code</a>
+      </div>
+    </div>
+  </nav>
 
-      <div class="mt-8 flex flex-wrap gap-3">
-        <a href="#" class="btn btn-light">
-          <i class="fa-solid fa-file-pdf"></i> Paper
+  <!-- HERO -->
+  <header id="top" class="border-b border-slate-200"
+          style="background:
+            radial-gradient(60rem 24rem at 15% 0%, rgba(194,82,30,0.06), transparent 60%),
+            radial-gradient(60rem 24rem at 85% 0%, rgba(46,109,168,0.08), transparent 60%);">
+    <div class="max-w-4xl mx-auto px-6 pt-16 pb-14 text-center">
+      <span class="pill !bg-emerald-50 !text-emerald-800 border border-emerald-200">
+        <i class="fa-solid fa-circle-check"></i> Accepted to COLM 2026
+      </span>
+
+      <h1 class="mt-5 text-5xl md:text-7xl font-black tracking-tight text-slate-900">
+        <span class="accent-action">SER</span><span class="accent-intent">UM</span>
+      </h1>
+      <p class="mt-3 text-xl md:text-2xl font-semibold text-slate-700">
+        <span class="accent-action font-extrabold">S</span>tate
+        <span class="accent-action font-extrabold">E</span>xtraction and
+        <span class="accent-action font-extrabold">R</span>efinement for
+        <span class="accent-intent font-extrabold">U</span>ser
+        <span class="accent-intent font-extrabold">M</span>odeling
+      </p>
+      <p class="mt-5 text-base md:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+        SERUM turns raw egocentric video into interpretable finite-state models of user
+        <span class="accent-action font-semibold">actions</span> and
+        <span class="accent-intent font-semibold">intents</span> —
+        no logs, no predefined taxonomies, no manual annotation.
+      </p>
+
+      <!-- Authors -->
+      <div class="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-5">
+        <a href="https://andyphu.com" target="_blank" rel="noopener" class="flex flex-col items-center group">
+          <img src="assets/authors/andy.jpg" alt="Andy J. Phu" class="w-16 h-16 rounded-full object-cover border-2 border-slate-200 group-hover:border-slate-400 transition" />
+          <span class="mt-2 text-sm font-medium text-slate-700 group-hover:text-slate-900">Andy J. Phu</span>
         </a>
-        <a href="https://github.com/minnesotanlp/serum" class="btn btn-light" target="_blank" rel="noopener">
-          <i class="fa-brands fa-github"></i> Code
+        <a href="https://jimtmooney.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center group">
+          <img src="assets/authors/james.jpeg" alt="James Mooney" class="w-16 h-16 rounded-full object-cover border-2 border-slate-200 group-hover:border-slate-400 transition" />
+          <span class="mt-2 text-sm font-medium text-slate-700 group-hover:text-slate-900">James Mooney</span>
         </a>
-        <a href="#live" class="btn btn-accent">
-          <i class="fa-solid fa-bolt"></i> Try Live Demo
+        <a href="https://karinjd.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center group">
+          <img src="assets/authors/karin.png" alt="Karin de Langis" class="w-16 h-16 rounded-full object-cover border-2 border-slate-200 group-hover:border-slate-400 transition" />
+          <span class="mt-2 text-sm font-medium text-slate-700 group-hover:text-slate-900">Karin de Langis</span>
         </a>
-        <a href="https://amir-fluviomarine-nia.ngrok-free.dev/" class="btn btn-dark" target="_blank" rel="noopener">
-          <i class="fa-solid fa-chart-line"></i> Open Dashboard
+        <a href="https://chile2706.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center group">
+          <img src="assets/authors/chi.jpg" alt="Khanh Chi Le" class="w-16 h-16 rounded-full object-cover border-2 border-slate-200 group-hover:border-slate-400 transition" />
+          <span class="mt-2 text-sm font-medium text-slate-700 group-hover:text-slate-900">Khanh Chi Le</span>
         </a>
+        <a href="https://dykang.github.io/" target="_blank" rel="noopener" class="flex flex-col items-center group">
+          <img src="assets/authors/dongyeop.jpg" alt="Dongyeop Kang" class="w-16 h-16 rounded-full object-cover border-2 border-slate-200 group-hover:border-slate-400 transition" />
+          <span class="mt-2 text-sm font-medium text-slate-700 group-hover:text-slate-900">Dongyeop Kang</span>
+        </a>
+      </div>
+      <p class="mt-4 text-sm text-slate-500">
+        <a href="https://minnesotanlp.github.io/" target="_blank" rel="noopener" class="hover:text-slate-700 underline decoration-slate-300 underline-offset-2">Minnesota NLP Lab</a>
+        · <a href="https://twin-cities.umn.edu/" target="_blank" rel="noopener" class="hover:text-slate-700 underline decoration-slate-300 underline-offset-2">University of Minnesota</a>
+      </p>
+
+      <!-- Action buttons -->
+      <div class="mt-8 flex flex-wrap justify-center gap-3">
+        <a href="assets/serum_colm2026.pdf" class="btn btn-dark"><i class="fa-solid fa-file-pdf"></i> Paper</a>
+        <a href="https://github.com/minnesotanlp/serum" target="_blank" rel="noopener" class="btn btn-light"><i class="fa-brands fa-github"></i> Code</a>
+        <a href="#live" class="btn btn-accent"><i class="fa-solid fa-bolt"></i> Live Demo</a>
+        <a href="https://amir-fluviomarine-nia.ngrok-free.dev/" target="_blank" rel="noopener" class="btn btn-light"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+        <a href="#bibtex" class="btn btn-light"><i class="fa-solid fa-quote-right"></i> BibTeX</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- TEASER FIGURE -->
+  <section id="overview" class="max-w-5xl mx-auto px-6 pt-14">
+    <figure class="paperfig">
+      <img src="assets/figures/fig1_teaser.jpg" width="2200" height="742"
+           alt="Comparison of the current standard single-pass annotation with SERUM. Single-pass methods yield isolated frame descriptions; SERUM builds action and intent models that support proactive assistance." />
+      <figcaption>
+        <strong>Current standard vs. SERUM.</strong> Single-pass methods process each frame independently,
+        producing isolated activity descriptions and coarse intent estimates. SERUM revisits prior context
+        across frames to build a refined user model of both
+        <span class="accent-action font-semibold">actions</span> and
+        <span class="accent-intent font-semibold">intents</span> — enabling better informed proactive suggestions.
+      </figcaption>
+    </figure>
+
+    <div class="mt-12 max-w-3xl mx-auto">
+      <p class="text-center text-xl md:text-2xl font-semibold leading-snug text-slate-800">
+        “Can we extract interpretable, structured models of user behavior directly from raw egocentric video —
+        <span class="accent-action">without a predefined ontology</span> and
+        <span class="accent-intent">without manual annotation</span>?”
+      </p>
+      <p class="mt-7 max-w-prose mx-auto text-[17px] text-slate-700 leading-relaxed">
+        Proactive AI assistants need structured models of user behavior — compact representations of how people
+        move through goal-directed activity over time. Egocentric video is abundant, but converting it into models
+        that downstream applications can reason over is hard: single-pass VLM annotation hallucinates and suffers from
+        <em>temporal conflation</em>, collapsing semantically distinct activities into generic labels.
+        <strong>SERUM</strong> answers with a multi-pass pipeline that alternates between activity recognition and
+        intent inference, each pass grounded in the accumulated context of prior passes. After annotation, synonymous
+        labels are merged into a compact vocabulary, and the label sequences are compiled into first-order Markov
+        <em>User Models</em> — one over actions, one over intents — that capture the probabilistic transition
+        structure of user behavior.
+      </p>
+    </div>
+  </section>
+
+  <!-- DATASET STATS BAND -->
+  <section class="max-w-5xl mx-auto px-6 pt-12">
+    <div class="rounded-2xl bg-slate-900 text-white px-6 py-8 md:px-10">
+      <div class="grid grid-cols-2 md:grid-cols-6 gap-6 text-center">
+        <div><div class="text-3xl font-extrabold mono">61</div><div class="mt-1 text-xs text-slate-400 uppercase tracking-wider">egocentric videos</div></div>
+        <div><div class="text-3xl font-extrabold mono">4</div><div class="mt-1 text-xs text-slate-400 uppercase tracking-wider">domains</div></div>
+        <div><div class="text-3xl font-extrabold mono">11,125</div><div class="mt-1 text-xs text-slate-400 uppercase tracking-wider">frames</div></div>
+        <div><div class="text-3xl font-extrabold mono">15.5<span class="text-lg">h</span></div><div class="mt-1 text-xs text-slate-400 uppercase tracking-wider">of footage</div></div>
+        <div><div class="text-3xl font-extrabold mono">12</div><div class="mt-1 text-xs text-slate-400 uppercase tracking-wider">passes per video</div></div>
+        <div><div class="text-3xl font-extrabold mono">133.5<span class="text-lg">k</span></div><div class="mt-1 text-xs text-slate-400 uppercase tracking-wider">state extractions</div></div>
+      </div>
+      <p class="mt-6 text-center text-xs text-slate-400">
+        Coding · cooking · physical activity · daily life &nbsp;—&nbsp; annotated with Qwen3-VL-8B-Instruct served via vLLM.
+        A generalization study on EPIC-KITCHENS-100 (366 videos, 37 participants) is reported in the paper appendix.
+      </p>
+    </div>
+  </section>
+
+  <!-- KEY FINDINGS -->
+  <section class="max-w-5xl mx-auto px-6 py-16">
+    <p class="eyebrow">TL;DR</p>
+    <h2 class="section-h text-3xl font-bold mt-2 mb-8 text-slate-900">Four key findings</h2>
+    <div class="grid md:grid-cols-2 gap-5">
+      <div class="card">
+        <div class="text-sm font-bold text-slate-500 mono">01 · Convergence</div>
+        <h3 class="mt-2 text-lg font-bold text-slate-900">Schematic equilibrium</h3>
+        <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
+          Iterative refinement doesn't drift — it converges. The extracted label vocabulary reliably stabilizes
+          into a consistent taxonomy by <strong>pass 8</strong>, a phenomenon we term <em>schematic equilibrium</em>.
+        </p>
+      </div>
+      <div class="card">
+        <div class="text-sm font-bold text-slate-500 mono">02 · Prediction</div>
+        <h3 class="mt-2 text-lg font-bold text-slate-900">User models that predict behavior</h3>
+        <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
+          Normalized Markov user models hit <strong>48.5%</strong> (actions) and <strong>58.2%</strong> (intents)
+          top-1 next-state accuracy, beating frequency baselines with far lower perplexity —
+          largest gains on structured tasks like coding (<strong>76.4%</strong>).
+        </p>
+      </div>
+      <div class="card">
+        <div class="text-sm font-bold text-slate-500 mono">03 · Normalization</div>
+        <h3 class="mt-2 text-lg font-bold text-slate-900">Open vocabulary, then merge</h3>
+        <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
+          Semantic label merging with a human-calibrated threshold compresses the vocabulary by
+          <strong>46%</strong>, improving top-1 accuracy by <strong>+18.2 pp</strong> and cutting perplexity
+          by <strong>14.9</strong> points.
+        </p>
+      </div>
+      <div class="card">
+        <div class="text-sm font-bold text-slate-500 mono">04 · Human judgment</div>
+        <h3 class="mt-2 text-lg font-bold text-slate-900">Labels people recognize</h3>
+        <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
+          Human annotators rate <strong>88.3%</strong> of final-pass labels accurate and prefer them over
+          first-pass labels <strong>82.8%</strong> of the time — iterative refinement produces meaningful,
+          recognizable improvements.
+        </p>
       </div>
     </div>
   </section>
 
-  <!-- SERUM OVERVIEW -->
-  <section class="max-w-4xl mx-auto px-6 py-16">
-    <h3 class="section-h text-2xl font-bold mb-5">SERUM Overview</h3>
-    <p class="text-slate-700 leading-relaxed text-lg">
-      <strong>SERUM</strong> is a method for taking unstructured egocentric footage, and producing structured logs of user activity via multi-pass VLM annotation.
-    </p>
-  </section>
+  <!-- METHOD -->
+  <section id="method" class="bg-slate-50 border-y border-slate-200">
+    <div class="max-w-5xl mx-auto px-6 py-16">
+      <p class="eyebrow">Method</p>
+      <h2 class="section-h text-3xl font-bold mt-2 mb-8 text-slate-900">How SERUM works</h2>
 
-  <!-- SERUM (gifs) -->
-  <section class="bg-slate-50 border-y border-slate-200">
-    <div class="max-w-6xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-8">SERUM</h3>
-      <div class="space-y-5">
-        <img src="assets/gifs/1.gif" alt="SERUM pipeline overview" loading="lazy"
-             class="w-full rounded-lg border border-slate-200 shadow-sm" />
-        <div class="grid md:grid-cols-2 gap-5">
-          <img src="assets/gifs/2.gif" alt="SERUM annotation passes" loading="lazy"
-               class="w-full rounded-lg border border-slate-200 shadow-sm" />
-          <img src="assets/gifs/3.gif" alt="SERUM result visualization" loading="lazy"
-               class="w-full rounded-lg border border-slate-200 shadow-sm" />
+      <figure class="paperfig">
+        <img src="assets/figures/fig2_pipeline.jpg" width="2200" height="1048"
+             alt="The SERUM pipeline applied to an HVAC repair video: frames pass through alternating activity and intent passes, labels are normalized, and finite-state user models are produced." />
+        <figcaption>
+          <strong>The SERUM pipeline on an HVAC repair video.</strong> Frames are annotated through alternating
+          <span class="accent-action font-semibold">activity</span> (orange) and
+          <span class="accent-intent font-semibold">intent</span> (blue) passes. Early passes yield generic labels
+          (“holding drill”); later passes produce fine-grained, context-aware labels (“testing HVAC repair”).
+          Labels are normalized before constructing the final User Models.
+        </figcaption>
+      </figure>
+
+      <!-- Actions vs Intents -->
+      <div class="mt-12 grid md:grid-cols-2 gap-5">
+        <div class="card !border-l-4" style="border-left-color: var(--action);">
+          <h3 class="font-bold text-lg" style="color: var(--action);">Actions <span class="mono text-sm text-slate-500">a<sub>t</sub></span></h3>
+          <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
+            Mid-level descriptors of <em>directly observable</em> behavior at frame <span class="mono">t</span> —
+            “washing vegetables,” “pulling a git repository.”
+          </p>
         </div>
-        <img src="assets/gifs/4.gif" alt="SERUM behavioral model output" loading="lazy"
-             class="w-full rounded-lg border border-slate-200 shadow-sm" />
+        <div class="card !border-l-4" style="border-left-color: var(--intent);">
+          <h3 class="font-bold text-lg" style="color: var(--intent);">Intents <span class="mono text-sm text-slate-500">i<sub>t</sub></span></h3>
+          <p class="mt-2 text-[15px] text-slate-600 leading-relaxed">
+            Latent goal-directed states <em>inferred</em> from sequences of actions —
+            “preparing dinner,” “setting up a dev environment.”
+          </p>
+        </div>
+      </div>
+      <p class="mt-5 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+        The two levels are <strong>mutually informative</strong>: action evidence anchors intent inference, and intent
+        context disambiguates ambiguous actions — “looking at a phone” becomes “checking map directions” once intent
+        context establishes “navigating to a destination.” This bidirectionality is why SERUM <em>alternates</em>
+        between them rather than running independent passes.
+      </p>
+
+      <!-- Steps -->
+      <div class="mt-10 grid md:grid-cols-2 gap-5">
+        <div class="card flex gap-4">
+          <div class="flex-none w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">1</div>
+          <div>
+            <h4 class="font-bold text-slate-900">Alternating annotation passes</h4>
+            <p class="mt-1.5 text-[14px] text-slate-600 leading-relaxed">
+              Odd passes label <span class="accent-action font-semibold">actions</span>, even passes infer
+              <span class="accent-intent font-semibold">intents</span> — each conditioned on the previous pass's
+              output, so the two levels ground each other in a feedback loop.
+            </p>
+          </div>
+        </div>
+        <div class="card flex gap-4">
+          <div class="flex-none w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">2</div>
+          <div>
+            <h4 class="font-bold text-slate-900">Context without token blowup</h4>
+            <p class="mt-1.5 text-[14px] text-slate-600 leading-relaxed">
+              From pass 2 onward, each pass sees a run-length-encoded temporal window of <span class="mono">w=20</span>
+              neighboring frames plus an inter-pass narrative summary — compressed episodic memory that propagates
+              global context forward.
+            </p>
+          </div>
+        </div>
+        <div class="card flex gap-4">
+          <div class="flex-none w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">3</div>
+          <div>
+            <h4 class="font-bold text-slate-900">Label normalization</h4>
+            <p class="mt-1.5 text-[14px] text-slate-600 leading-relaxed">
+              Surface synonyms (“rinsing produce” vs. “cleaning vegetables”) are merged via Sentence-BERT similarity
+              at a human-calibrated threshold (<span class="mono">t*=0.43</span>, F1 0.82) — cutting vocabulary
+              by 46% on average.
+            </p>
+          </div>
+        </div>
+        <div class="card flex gap-4">
+          <div class="flex-none w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">4</div>
+          <div>
+            <h4 class="font-bold text-slate-900">Output: User Models</h4>
+            <p class="mt-1.5 text-[14px] text-slate-600 leading-relaxed">
+              Label sequences compile into first-order Markov chains — one over actions, one over intents — that
+              surface probable next states, evaluated by next-state prediction (train on the first 60% of a video,
+              predict the last 40%).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Refinement example -->
+      <h3 class="mt-14 text-2xl font-bold text-slate-900">What refinement buys: pass 1 → pass 11</h3>
+      <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+        On a real coding video, pass 1 produces generic states like <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">typing on keyboard</span>
+        and <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">unclear</span>. By pass 11, task-specific states emerge:
+        <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">dockerizing python lambda</span>,
+        <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">raising PR</span>,
+        <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">checking load balancer metrics</span>.
+        The refined model correctly predicts state persistence (“raising PR” → “raising PR”), while a majority
+        baseline blindly predicts the globally most frequent states.
+      </p>
+      <div class="mt-6 grid md:grid-cols-2 gap-5 items-start">
+        <figure class="paperfig">
+          <img src="assets/figures/pass1_graph.png" width="1200" height="1265" alt="Action-level Markov graph after pass 1: sparse, generic states such as typing on keyboard and viewing screen." />
+          <figcaption class="text-center"><strong>Pass 1</strong> — sparse, generic states.</figcaption>
+        </figure>
+        <figure class="paperfig">
+          <img src="assets/figures/pass11_graph.png" width="1200" height="1408" alt="Action-level Markov graph after pass 11: rich, task-specific states such as dockerizing python lambda and raising PR." />
+          <figcaption class="text-center"><strong>Pass 11</strong> — task-specific, temporally coherent states.</figcaption>
+        </figure>
+      </div>
+
+      <!-- Example user models -->
+      <h3 class="mt-14 text-2xl font-bold text-slate-900">Example User Models</h3>
+      <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+        From a single lab-work video, SERUM produces two complementary views of behavior:
+      </p>
+      <div class="mt-6 grid md:grid-cols-5 gap-5 items-center">
+        <figure class="paperfig md:col-span-3">
+          <img src="assets/figures/um_activity.png" width="1395" height="558" alt="Action-level user model: pipetting liquid, manipulating test tube with tweezers, sitting, placing labware on workbench." />
+          <figcaption class="text-center"><strong class="accent-action">Action-level UM</strong> — observable behaviors.</figcaption>
+        </figure>
+        <figure class="paperfig md:col-span-2">
+          <img src="assets/figures/um_intent.png" width="926" height="728" alt="Intent-level user model: pipetting samples into test tubes, preparing lab samples, analyzing samples." />
+          <figcaption class="text-center"><strong class="accent-intent">Intent-level UM</strong> — inferred goals.</figcaption>
+        </figure>
       </div>
     </div>
   </section>
 
   <!-- LIVE INFERENCE -->
-  <section id="live" class="border-y border-slate-200 bg-gradient-to-b from-white to-slate-50">
+  <section id="live" class="bg-gradient-to-b from-white to-slate-50">
     <div class="max-w-5xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-3">SERUM live: generalized runner</h3>
-      <p class="text-slate-600 mb-8 max-w-3xl">
-        A live runner meant to help you understand the paper by watching SERUM work on a video of your choice.
-        Pick a pre-loaded video or paste a YouTube URL, and stream pass-by-pass labels as the model produces them.
-        To keep latency reasonable, the post-hoc analysis stages (normalization, Markov modeling, chart generation)
-        are skipped here. Those live in the dashboard below.
+      <p class="eyebrow">Interactive</p>
+      <h2 class="section-h text-3xl font-bold mt-2 mb-3 text-slate-900">SERUM live: run it on any video</h2>
+      <p class="text-slate-600 mb-8 max-w-prose leading-relaxed">
+        Watch SERUM work in real time on a video of your choice. Pick a pre-loaded video or paste a YouTube URL,
+        and stream pass-by-pass labels as the model produces them. To keep latency reasonable, the post-hoc analysis
+        stages (normalization, Markov modeling, chart generation) are skipped here — those live in the
+        <a href="#dashboard" class="text-blue-700 underline decoration-blue-200 underline-offset-2">dashboard</a>.
       </p>
 
       <div class="grid md:grid-cols-2 gap-6">
         <div class="card">
           <h4 class="font-semibold mb-3">1. Choose a video</h4>
-          <label class="block text-xs font-medium text-slate-500 mb-1">Preloaded library</label>
+          <label for="live-library" class="block text-xs font-medium text-slate-500 mb-1">Preloaded library</label>
           <select id="live-library" class="w-full text-sm rounded-md border border-slate-300 px-3 py-2 mb-4 bg-white">
             <option value="">select a demo</option>
           </select>
 
-          <label class="block text-xs font-medium text-slate-500 mb-1">…or paste a YouTube URL</label>
+          <label for="live-yt-url" class="block text-xs font-medium text-slate-500 mb-1">…or paste a YouTube URL</label>
           <input id="live-yt-url" type="url" placeholder="https://www.youtube.com/watch?v=…"
                  class="w-full text-sm rounded-md border border-slate-300 px-3 py-2 mb-2 bg-white" />
           <p class="text-xs text-slate-500 italic mb-4">
@@ -195,7 +457,7 @@
                   class="btn btn-accent w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed">
             <i class="fa-solid fa-bolt"></i> Run SERUM
           </button>
-          <p id="live-error" class="hidden mt-3 text-sm text-rose-600"></p>
+          <p id="live-error" class="hidden mt-3 text-sm text-rose-600" role="alert"></p>
           <p class="mt-4 text-xs text-slate-500">
             Inference takes a few minutes per video. Pass 1 results appear at ~90 seconds; full
             convergence by ~18 minutes for a 10-minute video. Leave the tab open to watch.
@@ -244,7 +506,7 @@
             <h4 class="font-semibold">3. Video &amp; timeline</h4>
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-xs text-slate-500" id="live-pair-label"></span>
-              <div id="live-pair-selector" class="flex gap-1" aria-label="Choose pass pair"></div>
+              <div id="live-pair-selector" class="flex gap-1" role="group" aria-label="Choose pass pair"></div>
               <div id="live-display-toggle" class="flex gap-1" role="group" aria-label="Display labels from"></div>
               <button id="live-follow-toggle"
                       class="text-xs px-2 py-1 rounded border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
@@ -303,16 +565,16 @@
     </div>
   </section>
 
-  <!-- DEMO -->
-  <section class="bg-slate-50 border-y border-slate-200">
+  <!-- DASHBOARD + GALLERY -->
+  <section id="dashboard" class="bg-slate-50 border-y border-slate-200">
     <div class="max-w-5xl mx-auto px-6 py-16">
-      <h3 class="section-h text-2xl font-bold mb-5">SERUM dashboard: full pipeline output, 400+ videos</h3>
-      <p class="text-slate-600 mb-6 max-w-3xl">
-        The dashboard lets you explore the complete pipeline output (including the post-hoc analyses skipped by the live runner above)
-        across 400+ videos: per-pass refinement chains, FSM graphs synchronized to the video, normalized Markov transition matrices,
-        and confidence / perplexity diagnostics.
+      <p class="eyebrow">Explore</p>
+      <h2 class="section-h text-3xl font-bold mt-2 mb-3 text-slate-900">Dashboard: full pipeline output on 400+ videos</h2>
+      <p class="text-slate-600 mb-6 max-w-prose leading-relaxed">
+        The dashboard exposes the complete pipeline output — per-pass refinement chains, user-model graphs synchronized
+        to the video, normalized Markov transition matrices, and confidence / perplexity diagnostics — across 400+ videos.
       </p>
-      <div class="flex flex-wrap gap-3">
+      <div class="flex flex-wrap gap-3 mb-4">
         <a href="https://amir-fluviomarine-nia.ngrok-free.dev/" class="btn btn-accent" target="_blank" rel="noopener">
           <i class="fa-solid fa-chart-line"></i> Open Dashboard
         </a>
@@ -320,32 +582,257 @@
           <i class="fa-solid fa-link"></i> Mirror
         </a>
       </div>
-      <p class="mt-4 text-xs text-slate-500">
+      <p class="text-xs text-slate-500 mb-10">
         If the first link is offline, try the mirror. Some ISPs may block ngrok; visit the HTTP version once to
         accept the certificate before the HTTPS link will load reliably.
       </p>
+
+      <h3 class="text-xl font-bold text-slate-900 mb-4">SERUM in action</h3>
+      <p class="text-sm text-slate-500 mb-5">User-model graphs being constructed live, in sync with the source video.</p>
+      <div class="space-y-5">
+        <video src="assets/videos/1.mp4" controls autoplay loop muted playsinline preload="metadata"
+               aria-label="SERUM building a user model graph in sync with an office video"
+               class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
+        <div class="grid md:grid-cols-2 gap-5">
+          <video src="assets/videos/2.mp4" controls autoplay loop muted playsinline preload="metadata"
+                 aria-label="SERUM annotating a cycling video"
+                 class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
+          <video src="assets/videos/3.mp4" controls autoplay loop muted playsinline preload="metadata"
+                 aria-label="SERUM annotating a web development session"
+                 class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
+        </div>
+        <video src="assets/videos/4.mp4" controls autoplay loop muted playsinline preload="metadata"
+               aria-label="SERUM state transitions across a daily-life video"
+               class="w-full rounded-lg border border-slate-200 shadow-sm"></video>
+      </div>
     </div>
   </section>
 
+  <!-- RESULTS -->
+  <section id="results" class="max-w-5xl mx-auto px-6 py-16">
+    <p class="eyebrow">Evaluation</p>
+    <h2 class="section-h text-3xl font-bold mt-2 mb-8 text-slate-900">Results</h2>
+
+    <!-- RQ2: prediction -->
+    <h3 class="text-2xl font-bold text-slate-900">Next-state prediction</h3>
+    <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+      User models are trained on the first 60% of each video and predict the held-out 40%.
+      Normalized Markov models (<span class="mono">Markov<sup>n</sup></span>) win on both accuracy and
+      perplexity, for both actions and intents:
+    </p>
+    <div class="mt-6 overflow-x-auto rounded-xl border border-slate-200">
+      <table class="results">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Action Top-1 % <span class="text-slate-500">↑</span></th>
+            <th>Action PPL <span class="text-slate-500">↓</span></th>
+            <th>Intent Top-1 % <span class="text-slate-500">↑</span></th>
+            <th>Intent PPL <span class="text-slate-500">↓</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="winner">
+            <td>Markov<sup>n</sup> (ours)</td>
+            <td>48.5 <span class="std">±30.9</span></td>
+            <td>10.9 <span class="std">±11.0</span></td>
+            <td>58.2 <span class="std">±30.3</span></td>
+            <td>8.2 <span class="std">±9.7</span></td>
+          </tr>
+          <tr>
+            <td>Majority<sup>n</sup></td>
+            <td>46.5 <span class="std">±32.6</span></td>
+            <td>14.4 <span class="std">±15.8</span></td>
+            <td>53.4 <span class="std">±33.8</span></td>
+            <td>11.0 <span class="std">±14.7</span></td>
+          </tr>
+          <tr>
+            <td>Markov (raw labels)</td>
+            <td>37.5 <span class="std">±33.3</span></td>
+            <td>23.9 <span class="std">±25.6</span></td>
+            <td>33.3 <span class="std">±26.9</span></td>
+            <td>24.6 <span class="std">±21.5</span></td>
+          </tr>
+          <tr>
+            <td>Majority (raw labels)</td>
+            <td>37.6 <span class="std">±34.0</span></td>
+            <td>29.8 <span class="std">±32.0</span></td>
+            <td>29.9 <span class="std">±28.1</span></td>
+            <td>31.8 <span class="std">±35.5</span></td>
+          </tr>
+          <tr>
+            <td>Weighted Random</td>
+            <td>25.9 <span class="std">±29.5</span></td>
+            <td>29.8 <span class="std">±32.0</span></td>
+            <td>17.9 <span class="std">±20.4</span></td>
+            <td>31.8 <span class="std">±35.5</span></td>
+          </tr>
+          <tr>
+            <td>Uniform</td>
+            <td>9.2 <span class="std">±10.5</span></td>
+            <td>30.8 <span class="std">±29.0</span></td>
+            <td>6.5 <span class="std">±9.0</span></td>
+            <td>34.2 <span class="std">±24.3</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-xs text-slate-500">
+      Mean top-1 accuracy and perplexity at the final pass across 61 videos. <sup>n</sup> = label normalization applied
+      before model construction. Top-3 and Top-5 show similar tendencies, favoring Markov even more strongly.
+    </p>
+
+    <!-- Domain breakdown -->
+    <h3 class="mt-14 text-2xl font-bold text-slate-900">Gains by domain</h3>
+    <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+      Structured workflows benefit most: coding reaches <strong>76%</strong> top-1 for both actions and intents,
+      reflecting the rich, repetitive transition structure of software work. Normalization lifts every domain
+      (raw → normalized):
+    </p>
+    <div class="mt-6 overflow-x-auto rounded-xl border border-slate-200">
+      <table class="results">
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th>Videos</th>
+            <th>Action Top-1 %</th>
+            <th>Intent Top-1 %</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Coding</td><td>19</td>
+            <td>73.9 → <strong>76.4</strong></td>
+            <td>47.5 → <strong>76.1</strong></td>
+          </tr>
+          <tr>
+            <td>Cooking</td><td>15</td>
+            <td>13.6 → <strong>31.8</strong></td>
+            <td>21.8 → <strong>53.8</strong></td>
+          </tr>
+          <tr>
+            <td>Physical</td><td>12</td>
+            <td>25.7 → <strong>44.2</strong></td>
+            <td>40.1 → <strong>71.6</strong></td>
+          </tr>
+          <tr>
+            <td>Daily Life</td><td>15</td>
+            <td>24.7 → <strong>33.5</strong></td>
+            <td>21.5 → <strong>30.3</strong></td>
+          </tr>
+          <tr class="winner">
+            <td>Overall</td><td>61</td>
+            <td>37.5 → <strong>48.5</strong></td>
+            <td>33.3 → <strong>58.2</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-xs text-slate-500">
+      Markov top-1 accuracy by domain at the final pass; arrows show the effect of label normalization.
+    </p>
+
+    <!-- RQ1: convergence -->
+    <h3 class="mt-14 text-2xl font-bold text-slate-900">Schematic equilibrium</h3>
+    <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+      Does iterative re-annotation drift forever? No. In a 30-pass pilot on 13 videos, raw activity vocabulary
+      falls from ~28 to ~18 unique states by pass 8 (intents: ~54 → ~24), then stays flat for the next 22 passes.
+      Every video individually stabilizes by pass 8 — free-form VLM labels settle into a consistent schema instead
+      of unbounded vocabulary drift. All large-scale runs use 12 passes, a margin beyond the observed convergence point.
+    </p>
+    <figure class="paperfig mt-6">
+      <img src="assets/figures/convergence.png" width="2200" height="982"
+           alt="Per-video vocabulary size across 30 annotation passes for activities (left) and intents (right); all curves flatten by pass 8." />
+      <figcaption>
+        <strong>Per-video vocabulary across 30 passes</strong> (left: activities, right: intents).
+        All videos stabilize by pass 8 — the <em>schematic equilibrium</em>.
+      </figcaption>
+    </figure>
+
+    <!-- RQ3: human -->
+    <h3 class="mt-14 text-2xl font-bold text-slate-900">Human assessment</h3>
+    <p class="mt-3 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+      Five annotators with domain expertise in human workflow research judged 180 sampled frames against the
+      source videos; in a separate ablation study, three annotators judged 30 blinded A/B pairs:
+    </p>
+    <div class="mt-6 grid sm:grid-cols-3 gap-5">
+      <div class="card text-center">
+        <div class="text-4xl font-extrabold mono text-slate-900">88.3%</div>
+        <p class="mt-2 text-sm text-slate-600 leading-snug">of final-pass labels rated <strong>accurate</strong> by majority vote <span class="text-slate-500">(α = 0.40)</span></p>
+      </div>
+      <div class="card text-center">
+        <div class="text-4xl font-extrabold mono text-slate-900">82.8%</div>
+        <p class="mt-2 text-sm text-slate-600 leading-snug"><strong>prefer final-pass</strong> labels over first-pass labels <span class="text-slate-500">(α = 0.41)</span></p>
+      </div>
+      <div class="card text-center">
+        <div class="text-4xl font-extrabold mono text-slate-900">73%</div>
+        <p class="mt-2 text-sm text-slate-600 leading-snug"><strong>prefer the full pipeline</strong> over an activity-only ablation — 3 annotators, 30 blinded A/B pairs <span class="text-slate-500">(α = 0.73)</span></p>
+      </div>
+    </div>
+    <p class="mt-5 max-w-prose text-[15px] text-slate-600 leading-relaxed">
+      The ablation is telling: without intent passes, activity labels collapse to uninformative dominant states —
+      <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">typing_on_keyboard</span> for 92–96% of coding
+      frames — where the intent-informed pipeline distinguishes
+      <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">editing_css_style</span>,
+      <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">editing_html_code</span>, and
+      <span class="mono text-[13px] bg-slate-100 px-1.5 py-0.5 rounded">debugging_code</span>.
+    </p>
+  </section>
+
   <!-- BIBTEX -->
-  <section class="max-w-4xl mx-auto px-6 py-16">
-    <h3 class="section-h text-2xl font-bold mb-5">BibTeX</h3>
-    <pre class="bg-slate-900 text-slate-100 text-sm rounded-xl p-5"><code>@inproceedings{serum2026,
+  <section id="bibtex" class="bg-slate-50 border-t border-slate-200">
+    <div class="max-w-4xl mx-auto px-6 py-16">
+      <p class="eyebrow">Citation</p>
+      <h2 class="section-h text-3xl font-bold mt-2 mb-6 text-slate-900">BibTeX</h2>
+      <div class="relative">
+        <button id="bibtex-copy"
+                class="absolute top-3 right-3 text-xs px-3 py-1.5 rounded-md bg-slate-700 text-slate-100 hover:bg-slate-600"
+                aria-label="Copy BibTeX to clipboard">
+          <i class="fa-regular fa-copy"></i> Copy
+        </button>
+        <pre class="bg-slate-900 text-slate-100 text-sm rounded-xl p-5"><code id="bibtex-code">@inproceedings{serum2026,
   title     = {SERUM: State Extraction and Refinement for User Modeling},
-  author    = {Phu, Andy J. and de Langis, Karin and Mooney, James and Le, Khanh Chi and Kang, Dongyeop},
+  author    = {Phu, Andy J. and Mooney, James and de Langis, Karin and Le, Khanh Chi and Kang, Dongyeop},
   booktitle = {Conference on Language Modeling (CoLM)},
   year      = {2026},
   note      = {to appear}
 }</code></pre>
+      </div>
+    </div>
   </section>
 
   <!-- FOOTER -->
-  <footer class="border-t border-slate-200 py-10">
+  <footer class="border-t border-slate-200 py-10 bg-white">
     <div class="max-w-5xl mx-auto px-6 text-center text-sm text-slate-500">
-      SERUM · Minnesota NLP Lab · University of Minnesota
+      <span class="font-semibold"><span class="accent-action">SER</span><span class="accent-intent">UM</span></span>
+      · <a href="https://minnesotanlp.github.io/" target="_blank" rel="noopener" class="hover:text-slate-700">Minnesota NLP Lab</a>
+      · University of Minnesota
     </div>
   </footer>
 
   <script src="assets/live.js"></script>
+  <script>
+    // Copy BibTeX to clipboard
+    (function () {
+      const btn = document.getElementById("bibtex-copy");
+      const code = document.getElementById("bibtex-code");
+      if (!btn || !code) return;
+      btn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(code.textContent);
+          btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+          setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'; }, 1600);
+        } catch (e) { /* clipboard unavailable; ignore */ }
+      });
+    })();
+
+    // Respect reduced-motion: don't autoplay the gallery videos
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.querySelectorAll("video[autoplay]").forEach((v) => {
+        v.removeAttribute("autoplay");
+        v.pause();
+      });
+    }
+  </script>
 </body>
 </html>
